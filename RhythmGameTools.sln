@@ -5,7 +5,11 @@ VisualStudioVersion = 17.8.34212.112
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ChunithmSongListExtractor", "ChunithmSongListExtractor\ChunithmSongListExtractor.csproj", "{CADE87BA-4F6D-432D-91A1-34EF607F1CF8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BotSongAliasUpdater", "BotSongAliasUpdater\BotSongAliasUpdater.csproj", "{DFFA0651-8E4B-47DB-895D-B899DCE79B4A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BotSongAliasUpdater", "BotSongAliasUpdater\BotSongAliasUpdater.csproj", "{DFFA0651-8E4B-47DB-895D-B899DCE79B4A}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ArcaeaSongListExtractor", "ArcaeaSongListExtractor\ArcaeaSongListExtractor.csproj", "{F9314F75-0EBD-4D71-907D-E544462728A4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BmsFilenameFixer", "BmsFilenameFIxer\BmsFilenameFixer.csproj", "{EB261309-C841-46F3-8DF4-4F5400929739}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +25,14 @@ Global
 		{DFFA0651-8E4B-47DB-895D-B899DCE79B4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DFFA0651-8E4B-47DB-895D-B899DCE79B4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DFFA0651-8E4B-47DB-895D-B899DCE79B4A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F9314F75-0EBD-4D71-907D-E544462728A4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F9314F75-0EBD-4D71-907D-E544462728A4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F9314F75-0EBD-4D71-907D-E544462728A4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F9314F75-0EBD-4D71-907D-E544462728A4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EB261309-C841-46F3-8DF4-4F5400929739}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB261309-C841-46F3-8DF4-4F5400929739}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB261309-C841-46F3-8DF4-4F5400929739}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB261309-C841-46F3-8DF4-4F5400929739}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
