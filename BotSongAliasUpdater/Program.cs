@@ -5,20 +5,21 @@ public static class Program
     public static void Merge(string tsv, string txt)
     {
         var lines = File.ReadAllLines(tsv);
-        var dict = new Dictionary<string, List<string>>();
+        var dict  = new Dictionary<string, HashSet<string>>();
 
         foreach (var line in lines)
         {
             var split = line.Split('\t');
-            var key = split[0];
+            var key   = split[0];
 
-            if (!dict.ContainsKey(key))
-                dict.Add(key, new List<string>());
+            if (!dict.ContainsKey(key)) dict.Add(key, new HashSet<string>());
 
-            dict[key].AddRange(split[1..]
-                .Select(x => x.Trim('"').Replace("\"\"", "\""))
-                .Where(x => !string.IsNullOrWhiteSpace(x))
-            );
+            foreach (var i in split[1..]
+                         .Select(x => x.Trim('"').Replace("\"\"", "\""))
+                         .Where(x => !string.IsNullOrWhiteSpace(x)))
+            {
+                dict[key].Add(i);
+            }
         }
 
         var txtLines = File.ReadAllLines(txt);
@@ -26,11 +27,10 @@ public static class Program
         foreach (var i in txtLines)
         {
             var split = i.Split('\t');
-            var key = split[0];
+            var key   = split[0];
             var value = split[1];
 
-            if (!dict.ContainsKey(key))
-                dict.Add(key, new List<string>());
+            if (!dict.ContainsKey(key)) dict.Add(key, new HashSet<string>());
 
             dict[key].Add(value.Contains('"') ? $"\"{value.Replace("\"", "\"\"")}\"" : value);
         }
