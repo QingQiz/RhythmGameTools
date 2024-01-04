@@ -39,6 +39,18 @@ public static class Program
         int BellCount
     );
 
+    private static Dictionary<string, string> VersionMap = new()
+    {
+        { "1.00", "ONGEKI" },
+        { "1.05", "ONGEKI PLUS" },
+        { "1.10", "SUMMER" },
+        { "1.15", "SUMMER PLUS" },
+        { "1.20", "R.E.D." },
+        { "1.25", "R.E.D. PLUS" },
+        { "1.30", "bright" },
+        { "1.35", "bright MEMORY" },
+    };
+
     private static Chart ParseOngekiChart(string ogkr, decimal @const)
     {
         // read ogkr line by line
@@ -138,6 +150,8 @@ public static class Program
             charts.Add(ParseOngekiChart(Path.Join(xmlRootPath, path!), constValue));
         }
 
+        var version = doc.SelectSingleNode("/MusicData/VersionID/str")!.InnerText;
+
         return new MusicData(
             int.Parse(doc.SelectSingleNode("/MusicData/Name/id")!.InnerText),
             doc.SelectSingleNode("/MusicData/Name/str")!.InnerText,
@@ -146,41 +160,37 @@ public static class Program
             doc.SelectSingleNode("/MusicData/Genre/str")!.InnerText,
             doc.SelectSingleNode("/MusicData/BossCard/str")!.InnerText,
             int.Parse(doc.SelectSingleNode("/MusicData/BossLevel")!.InnerText),
-            doc.SelectSingleNode("/MusicData/VersionID/str")!.InnerText,
+            VersionMap[string.Join('.', version.Split("_")[1..])],
             doc.SelectSingleNode("/MusicData/ReleaseVersion")!.InnerText,
             doc.SelectSingleNode("/MusicData/MusicRightsName/str")!.InnerText,
             charts
         );
     }
 
-    public static void Main(string[] args)
+    public static void Main()
     {
-        var json = new List<MusicData>();
-
-        // foreach (var xml in Directory.GetFiles(Root, "Music.xml", SearchOption.AllDirectories))
-        Parallel.ForEach(Directory.GetFiles(Root, "Music.xml", SearchOption.AllDirectories), xml =>
+        var json = Directory.GetFiles(Root, "Music.xml", SearchOption.AllDirectories)
+            .AsParallel()
+            .Select(xml =>
             {
                 var data     = ParseOngekiXml(xml);
                 var coverSrc = Path.Join(CoverRoot, $"UI_Jacket_{data.Id:0000}.png");
                 var coverDst = Path.Join(OutputPath, "cover", $"{data.Id}.png");
 
-                if (!File.Exists(coverDst))
+                if (File.Exists(coverDst)) return data;
+
+                if (!File.Exists(coverSrc))
                 {
-                    if (!File.Exists(coverSrc))
-                    {
-                        Console.WriteLine($"Cover for {data.Id} not found!");
-                    }
-                    else
-                    {
-                        File.Copy(coverSrc, coverDst, true);
-                    }
+                    Console.WriteLine($"Cover for {data.Id} not found!");
+                }
+                else
+                {
+                    File.Copy(coverSrc, coverDst, true);
                 }
 
-                json.Add(data);
-            }
-        );
-
-        json = json.OrderBy(x => x.Id).ToList();
+                return data;
+            })
+            .OrderBy(x => x.Id).ToList();
 
         File.WriteAllText(Path.Join(OutputPath, "ongeki.json"), JsonConvert.SerializeObject(json, Formatting.Indented));
     }
