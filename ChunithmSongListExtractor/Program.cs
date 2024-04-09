@@ -14,15 +14,16 @@ public static class Program
     {
         public override string ToString()
         {
-            return $"{{ Id = {Id}, Title = {Title}, Artist = {Artist}, Genre = {Genre}, Version = {Version}, Beatmaps = {Beatmaps} }}";
+            return
+                $"{{ Id = {Id}, Title = {Title}, Artist = {Artist}, Genre = {Genre}, Version = {Version}, Beatmaps = {Beatmaps} }}";
         }
     }
 
-    public record Chart(string LevelName, long maxCombo, string LevelStr, double Constant, string Charter, string Bpm)
+    public record Chart(string LevelName, long MaxCombo, string LevelStr, double Constant, string Charter, string Bpm, string ChartName)
     {
         public override string ToString()
         {
-            return $"{{ LevelName = {LevelName}, Constant = {Constant}, Charter = {Charter}, Bpm = {Bpm} }}";
+            return $"{{ LevelName = {LevelName}, Constant = {Constant}, Charter = {Charter}, Bpm = {Bpm}, ChartName = {ChartName} }}";
         }
     }
 
@@ -34,7 +35,7 @@ public static class Program
             return;
         }
 
-        var p = args[0];
+        var p      = args[0];
         var output = args[1];
         var ffmpeg = args[2];
 
@@ -57,33 +58,36 @@ public static class Program
         }
 
         Directory.CreateDirectory(Path.Join(output, "cover"));
+        Directory.CreateDirectory(Path.Join(output, "chart"));
 
         var versionName = new Dictionary<string, string>()
-    {
-        { "v1 1.00.00", "CHUNITHM" },
-        { "v1 1.05.00", "CHUNITHM PLUS" },
-        { "v1 1.10.00", "CHUNITHM AIR" },
-        { "v1 1.15.00", "CHUNITHM AIR PLUS" },
-        { "v1 1.20.00", "CHUNITHM STAR" },
-        { "v1 1.25.00", "CHUNITHM STAR PLUS" },
-        { "v1 1.30.00", "CHUNITHM AMAZON" },
-        { "v1 1.35.00", "CHUNITHM AMAZON PLUS" },
-        { "v1 1.40.00", "CHUNITHM CRYSTAL" },
-        { "v1 1.45.00", "CHUNITHM CRYSTAL PLUS" },
-        { "v1 1.50.00", "CHUNITHM PARADISE" },
-        { "v1 1.55.00", "CHUNITHM PARADISE LOST" },
-        { "v2 2.00.00", "CHUNITHM NEW!!" },
-        { "v2 2.05.00", "CHUNITHM NEW PLUS!!" },
-        { "v2 2.10.00", "CHUNITHM SUN" },
-        { "v2 2.15.00", "CHUNITHM SUN PLUS" }
-    };
+        {
+            { "v1 1.00.00", "CHUNITHM" },
+            { "v1 1.05.00", "CHUNITHM PLUS" },
+            { "v1 1.10.00", "CHUNITHM AIR" },
+            { "v1 1.15.00", "CHUNITHM AIR PLUS" },
+            { "v1 1.20.00", "CHUNITHM STAR" },
+            { "v1 1.25.00", "CHUNITHM STAR PLUS" },
+            { "v1 1.30.00", "CHUNITHM AMAZON" },
+            { "v1 1.35.00", "CHUNITHM AMAZON PLUS" },
+            { "v1 1.40.00", "CHUNITHM CRYSTAL" },
+            { "v1 1.45.00", "CHUNITHM CRYSTAL PLUS" },
+            { "v1 1.50.00", "CHUNITHM PARADISE" },
+            { "v1 1.55.00", "CHUNITHM PARADISE LOST" },
+            { "v2 2.00.00", "CHUNITHM NEW!!" },
+            { "v2 2.05.00", "CHUNITHM NEW PLUS!!" },
+            { "v2 2.10.00", "CHUNITHM SUN" },
+            { "v2 2.15.00", "CHUNITHM SUN PLUS" },
+            { "v2 2.20.00", "CHUNITHM LUMINOUS" },
+            { "v2 2.25.00", "CHUNITHM LUMINOUS PLUS" }
+        };
 
         var list = new Dictionary<long, Song>();
 
         Parallel.ForEach(Directory.GetFiles(p, "Music.xml", SearchOption.AllDirectories), i =>
         {
             var path = Path.GetDirectoryName(i)!;
-            var xml = new XmlDocument();
+            var xml  = new XmlDocument();
             xml.Load(i);
 
             MusicData obj;
@@ -119,33 +123,35 @@ public static class Program
                 if (!File.Exists(Path.Join(path, chart.File.Path))) continue;
 
                 var text = File.ReadAllText(Path.Join(path, chart.File.Path));
+                var chartName = Path.GetFileNameWithoutExtension(chart.File.Path);
 
                 var charter = new Regex(@"CREATOR\t(.*)").Match(text).Groups[1].Value.Trim();
-                var bpm = new Regex(@"BPM_DEF\t(.*)").Match(text).Groups[1].Value.Trim();
-                var combo = new Regex(@"T_JUDGE_ALL\t(.*)").Match(text).Groups[1].Value.Trim();
+                var bpm     = new Regex(@"BPM_DEF\t(.*)").Match(text).Groups[1].Value.Trim();
+                var combo   = new Regex(@"T_JUDGE_ALL\t(.*)").Match(text).Groups[1].Value.Trim();
                 var bpmList = bpm.Split('\t').Select(double.Parse).ToList();
-                var bpmMax = bpmList.Max();
-                var bpmMin = bpmList.Min();
-                bpm = Math.Abs(bpmMax - bpmMin) < 0.01 ? bpmMax.ToString("F2") : $"{bpmList.First()} ({bpmMin:F2} - {bpmMax:F2})";
+                var bpmMax  = bpmList.Max();
+                var bpmMin  = bpmList.Min();
+                bpm = Math.Abs(bpmMax - bpmMin) < 0.01
+                    ? bpmMax.ToString("F2")
+                    : $"{bpmList.First()} ({bpmMin:F2} - {bpmMax:F2})";
 
                 _ = int.TryParse(combo, out var maxCombo);
 
                 try
                 {
-                    if (obj.WorldsEndTagName.Id == -1)
-                    {
-                        beatmaps.Add(new Chart(chart.Type.Data, maxCombo, $"{chart.Level}{(chart.LevelDecimal >= 50 ? "+" : "")}", chart.Level + chart.LevelDecimal / 100.0, charter, bpm));
-                    }
-                    else
-                    {
-                        beatmaps.Add(new Chart(chart.Type.Data, maxCombo, obj.WorldsEndTagName.Str, chart.Level + chart.LevelDecimal / 100.0, charter, bpm));
-                    }
+                    beatmaps.Add(obj.WorldsEndTagName.Id == -1
+                        ? new Chart(chart.Type.Data, maxCombo, $"{chart.Level}{(chart.LevelDecimal >= 50 ? "+" : "")}",
+                            chart.Level + chart.LevelDecimal / 100.0, charter, bpm, chartName)
+                        : new Chart(chart.Type.Data, maxCombo, obj.WorldsEndTagName.Str,
+                            chart.Level + chart.LevelDecimal / 100.0, charter, bpm, chartName));
                 }
                 catch
                 {
                     Console.WriteLine(path);
                     throw;
                 }
+
+                File.Copy(Path.Join(path, chart.File.Path), Path.Join(output, "chart", chart.File.Path), true);
             }
 
             if (!File.Exists(Path.Join(path, coverName)))
@@ -154,18 +160,19 @@ public static class Program
                 {
                     EnableRaisingEvents = true
                 };
-                process.StartInfo.FileName = ffmpeg;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.CreateNoWindow = true;
+                process.StartInfo.FileName               = ffmpeg;
+                process.StartInfo.UseShellExecute        = false;
+                process.StartInfo.CreateNoWindow         = true;
                 process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.Arguments = $"-i \"{Path.Join(path, obj.JaketFile.Path)}\" -loglevel error -stats \"{Path.Join(path, coverName)}\"";
+                process.StartInfo.Arguments =
+                    $"-i \"{Path.Join(path, obj.JaketFile.Path)}\" -loglevel error -stats \"{Path.Join(path, coverName)}\"";
                 process.Start();
                 process.WaitForExit();
             }
 
             lock (list)
             {
-                if (list.ContainsKey(write.Id))
+                if (!list.TryAdd(write.Id, write))
                 {
                     if (write.Beatmaps.All(x => x.LevelName != "WORLD'S END"))
                     {
@@ -175,11 +182,8 @@ public static class Program
                             Genre = write.Genre,
                         };
                     }
+
                     list[write.Id].Beatmaps.AddRange(write.Beatmaps);
-                }
-                else
-                {
-                    list[write.Id] = write;
                 }
             }
 
@@ -206,7 +210,7 @@ public static class Program
                 Beatmaps = x.Beatmaps
                     .OrderBy(y => levelOrder[y.LevelName])
                     .ThenBy(y => y.LevelStr)
-                    .ThenBy(y => y.maxCombo)
+                    .ThenBy(y => y.MaxCombo)
                     .ToList(),
             }).ToList();
 
