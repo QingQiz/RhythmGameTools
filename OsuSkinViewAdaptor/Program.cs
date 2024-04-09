@@ -59,12 +59,39 @@ public static class Program
         //
         var columnStart = (int)Math.Round((480.0 / res[1] * res[0] - 7 * columnWidth) / 2);
         //
-        var noteHeight    = (int)Math.Round(CurrentConfig.NoteHeight    * hScale);
-        var hitPosition   = (int)Math.Round(CurrentConfig.HitPosition   * hScale);
-        var speed         = (int)Math.Round(CurrentConfig.Speed         * hScale);
+        var noteHeight    = (int)Math.Round(CurrentConfig.NoteHeight  * hScale);
+        var hitPosition   = (int)Math.Round(CurrentConfig.HitPosition * hScale);
+        var speed         = CurrentConfig.Speed * hScale;
         var scorePosition = (int)Math.Round(CurrentConfig.ScorePosition * hScale);
 
 
+        Console.WriteLine("若使用挡板：");
+        Console.WriteLine("挡板图像高度：480");
+        Console.WriteLine("挡板图像宽度：{0}", columnWidth * 7);
+        Console.WriteLine("挡板图像黑色部分高度：{0}", CurrentConfig.HitPosition - hitPosition);
+        //
+        Console.WriteLine("ColumnWidth: "   + columnWidth);
+        Console.WriteLine("ColumnStart: "   + columnStart);
+        Console.WriteLine("NoteHeight: "    + noteHeight);
+        Console.WriteLine("HitPosition: "   + CurrentConfig.HitPosition);
+        Console.WriteLine("ScorePosition: " + CurrentConfig.ScorePosition);
+        Console.WriteLine("Speed: "         + speed);
+        Console.WriteLine("====================================");
+        // centered play field
+        Console.WriteLine("ColumnStart: {0}", columnStart);
+        Console.WriteLine("------------------------------------");
+        Console.WriteLine($"HitPosition: {CurrentConfig.HitPosition}");
+        Console.WriteLine($"LightPosition: {CurrentConfig.HitPosition}");
+        Console.WriteLine($"ScorePosition: {CurrentConfig.ScorePosition}");
+        Console.WriteLine("------------------------------------");
+        Console.WriteLine("ColumnWidth: {0},{0},{0},{0},{0},{0},{0}", columnWidth);
+        Console.WriteLine("WidthForNoteHeightScale: {0}", noteHeight);
+        Console.WriteLine("------------------------------------");
+        Console.WriteLine("Speed: {0}", speed);
+        Console.WriteLine("====================================");
+        Console.WriteLine();
+
+        Console.WriteLine("若不使用挡板：");
         Console.WriteLine("ColumnWidth: "   + columnWidth);
         Console.WriteLine("ColumnStart: "   + columnStart);
         Console.WriteLine("NoteHeight: "    + noteHeight);
@@ -83,5 +110,6 @@ public static class Program
         Console.WriteLine("WidthForNoteHeightScale: {0}", noteHeight);
         Console.WriteLine("------------------------------------");
         Console.WriteLine("Speed: {0}", speed);
+        Console.WriteLine("====================================");
     }
 }
