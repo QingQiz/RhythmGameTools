@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <TargetFramework>net7.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+      <UserSecretsId>fbf7964f-8a1a-4c30-9bd8-73458d1f56c7</UserSecretsId>
+  </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Flurl.Http" Version="3.0.1" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.0-preview.3.24172.9" />
+    </ItemGroup>
+
+</Project>
