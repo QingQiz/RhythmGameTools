@@ -29,6 +29,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OngekiSongListExtractor", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsuSkinViewAdaptor", "OsuSkinViewAdaptor\OsuSkinViewAdaptor.csproj", "{B779757E-DAD1-407C-B956-53708E7C1154}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsuBeatmapDownloader", "OsuBeatmapDownloader\OsuBeatmapDownloader.csproj", "{989C2A47-3FC2-41B4-AB4C-C11FEE8C01B0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -63,6 +65,10 @@ Global
 		{B779757E-DAD1-407C-B956-53708E7C1154}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B779757E-DAD1-407C-B956-53708E7C1154}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B779757E-DAD1-407C-B956-53708E7C1154}.Release|Any CPU.Build.0 = Release|Any CPU
+		{989C2A47-3FC2-41B4-AB4C-C11FEE8C01B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{989C2A47-3FC2-41B4-AB4C-C11FEE8C01B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{989C2A47-3FC2-41B4-AB4C-C11FEE8C01B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{989C2A47-3FC2-41B4-AB4C-C11FEE8C01B0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -78,5 +84,6 @@ Global
 		{6930D198-4E22-40F3-9200-3A726BE82FBD} = {FEE99E9B-D0B3-4B43-81D3-CC90EBF86B2D}
 		{E6F6D464-B467-45D3-9AB8-4BC143B532C7} = {3573CEA9-DE63-446B-B92C-9510E530A7E8}
 		{B779757E-DAD1-407C-B956-53708E7C1154} = {FEE99E9B-D0B3-4B43-81D3-CC90EBF86B2D}
+		{989C2A47-3FC2-41B4-AB4C-C11FEE8C01B0} = {FEE99E9B-D0B3-4B43-81D3-CC90EBF86B2D}
 	EndGlobalSection
 EndGlobal
