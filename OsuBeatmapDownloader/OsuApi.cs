@@ -115,6 +115,13 @@ public static class OsuApi
 
             s.Close();
             fs.Close();
+            
+            // check file size. at least 10KB
+            if (new FileInfo(beatmapPath).Length < 10240)
+            {
+                File.Delete(beatmapPath);
+                throw new Exception("Download failed");
+            }
 
             return beatmapPath;
         }

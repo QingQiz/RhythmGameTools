@@ -1,4 +1,5 @@
-﻿using Flurl.Http;
+﻿using System.Collections.Concurrent;
+using Flurl.Http;
 using Newtonsoft.Json;
 
 namespace OsuBeatmapDownloader;
@@ -56,10 +57,12 @@ internal static class Program
 
     private static async Task<List<BeatmapSet>> GetRecommendMapList()
     {
-        if (File.Exists("beatmapsets.json"))
+        var cacheName = DateTime.Now.ToString("[yyyy-MM-dd]") + "beatmaps.json";
+
+        if (File.Exists(cacheName))
         {
             // deserialize
-            return JsonConvert.DeserializeObject<List<BeatmapSet>>(await File.ReadAllTextAsync("beatmapsets.json"));
+            return JsonConvert.DeserializeObject<List<BeatmapSet>>(await File.ReadAllTextAsync(cacheName));
         }
 
         var userList = new[]
@@ -98,7 +101,7 @@ internal static class Program
         }
 
         // write to file
-        await File.WriteAllTextAsync("beatmapsets.json", JsonConvert.SerializeObject(mapList));
+        await File.WriteAllTextAsync(cacheName, JsonConvert.SerializeObject(mapList));
 
         return mapList;
     }
@@ -130,18 +133,37 @@ internal static class Program
         mapList = RemoveDownloadedBeatmaps(mapList);
 
         Console.WriteLine($"Downloading {mapList.Count} beatmaps");
-        
-        Parallel.ForEach(mapList, map =>
+
+        // create thread pool
+        var queue = new ConcurrentQueue<BeatmapSet>(mapList);
+
+        // start download
+        var tasks = new Task[Environment.ProcessorCount];
+
+        for (var i = 0; i < tasks.Length; i++)
         {
-            try
+            tasks[i] = Task.Run(() =>
             {
-                OsuApi.DownloadBeatmap(map.Id, Output).GetAwaiter().GetResult();
-                Console.WriteLine($"Downloaded {map.Id} {map.Title} - {map.Artist} by {map.Creator}");
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Download {map.Id} failed: {e.Message}");
-            }
-        });
+                while (queue.TryDequeue(out var map))
+                {
+                    try
+                    {
+                        OsuApi.DownloadBeatmap(map.Id, Output).GetAwaiter().GetResult();
+                        Console.WriteLine($"Downloaded {map.Id} {map.Title} - {map.Artist} by {map.Creator}");
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine($"Download {map.Id} failed: {e.Message}. RETRYING...");
+                        queue.Enqueue(map);
+                    }
+                    finally
+                    {
+                        Console.Write($"Remaining {queue.Count} beatmaps ");
+                    }
+                }
+            });
+        }
+
+        await Task.WhenAll(tasks);
     }
 }
