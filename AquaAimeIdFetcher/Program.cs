@@ -1,7 +1,10 @@
 ﻿using System.Globalization;
+using System.IO.Compression;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
+using System.Text;
+using Flurl.Http;
 
 namespace AquaAimeIdFetcher;
 
@@ -41,9 +44,42 @@ static class Program
         return bytes;
     }
 
-    static void Main()
+    static async Task Main()
     {
-        var bytes    = GenerateRequestBytes(AccessCode, KeyChipId);
+        Console.WriteLine(await GetServerUri(KeyChipId));
+        Console.WriteLine(AccessCodeToAimeId(AccessCode, KeyChipId));
+    }
+
+    private static async Task<string> GetServerUri(string keyChipId)
+    {
+        var data = $"game_id=SDHD&ver=2.20&serial={keyChipId}";
+
+        byte[] compressedData;
+
+        // 将字符串转换为字节数组
+        var originalBytes = Encoding.UTF8.GetBytes(data);
+
+        using (var compressedStream = new MemoryStream())
+        {
+            await using (var zLibStream = new ZLibStream(compressedStream, CompressionMode.Compress))
+            {
+                zLibStream.Write(originalBytes, 0, originalBytes.Length);
+            }
+
+            compressedData = compressedStream.ToArray();
+        }
+
+        var postData = Convert.ToBase64String(compressedData);
+
+        var resp     = await $"http://{AquaHost}/sys/servlet/PowerOn".PostStringAsync(postData);
+        var respData = await resp.GetStringAsync();
+
+        return respData.Split('&').First(x => x.StartsWith("uri")).Split('=', 2)[1];
+    }
+
+    private static int AccessCodeToAimeId(string accessCode, string keyChipId)
+    {
+        var bytes    = GenerateRequestBytes(accessCode, keyChipId);
         var outBytes = new byte[48];
 
         var ip = Dns.GetHostAddresses(AquaHost)[0];
@@ -62,7 +98,7 @@ static class Program
             }
         }
 
-        Console.WriteLine(DecryptResponse(outBytes));
+        return DecryptResponse(outBytes);
     }
 
     static byte[] GenerateRequestBytes(string accessCode, string keyChipId)
