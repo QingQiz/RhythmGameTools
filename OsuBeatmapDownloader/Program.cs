@@ -40,11 +40,11 @@ internal static class Program
                     .Request(OsuApi.ApiRoot + $"/users/{user.id}/beatmapsets/{t}?limit={limit}&offset={offset}")
                     .GetJsonListAsync();
 
-                if (!j.Any()) break;
-
                 res.AddRange(j.Select(x =>
                     new BeatmapSet((int)x.id, (string)x.title, (string)x.artist, (string)x.creator, t))
                 );
+
+                if (j.Count < limit) break;
 
                 offset += limit;
             }
@@ -134,8 +134,9 @@ internal static class Program
 
         Console.WriteLine($"Downloading {mapList.Count} beatmaps");
 
+        const int maxRetry = 10;
         // create thread pool
-        var queue = new ConcurrentQueue<BeatmapSet>(mapList);
+        var queue = new ConcurrentQueue<(BeatmapSet Map, int Count)>(mapList.Select(x => (x, 0)));
 
         // start download
         var tasks = new Task[Environment.ProcessorCount];
@@ -148,13 +149,20 @@ internal static class Program
                 {
                     try
                     {
-                        OsuApi.DownloadBeatmap(map.Id, Output).GetAwaiter().GetResult();
-                        Console.WriteLine($"Downloaded {map.Id} {map.Title} - {map.Artist} by {map.Creator}");
+                        OsuApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
+                        Console.WriteLine($"Downloaded {map.Map.Id} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"Download {map.Id} failed: {e.Message}. RETRYING...");
-                        queue.Enqueue(map);
+                        if (map.Count < maxRetry)
+                        {
+                            Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. RETRYING...");
+                            queue.Enqueue((map.Map, map.Count + 1));
+                        }
+                        else
+                        {
+                            Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. GIVE UP.");
+                        }
                     }
                     finally
                     {
