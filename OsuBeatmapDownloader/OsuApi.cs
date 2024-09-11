@@ -15,9 +15,12 @@ public static class OsuApi
     {
         get
         {
-            if (_tokenExpire == null || DateTime.Now > _tokenExpire || _token == null)
+            lock (typeof(OsuApi))
             {
-                RenewToken().Wait();
+                if (_tokenExpire == null || DateTime.Now > _tokenExpire || _token == null)
+                {
+                    RenewToken().Wait();
+                }
             }
 
             return _token!;
@@ -115,7 +118,7 @@ public static class OsuApi
 
             s.Close();
             fs.Close();
-            
+
             // check file size. at least 10KB
             if (new FileInfo(beatmapPath).Length < 10240)
             {

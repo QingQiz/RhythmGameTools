@@ -88,17 +88,26 @@ internal static class Program
 
         var mapList = new List<BeatmapSet>();
 
-        foreach (var user in userList)
+        Parallel.ForEach(userList, new ParallelOptions { MaxDegreeOfParallelism = 8 }, user =>
         {
             try
             {
-                mapList.AddRange(await GetUserBeatmapSets(user));
+                Console.WriteLine("Requesting " + user);
+                var res = GetUserBeatmapSets(user).Result;
+                lock (mapList)
+                {
+                    mapList.AddRange(res);
+                }
             }
             catch (FlurlHttpException e) when (e.StatusCode == 404)
             {
                 Console.WriteLine($"User {user} not found.");
             }
-        }
+            catch (AggregateException e) when (e.InnerExceptions.All(x => (x as FlurlHttpException)?.StatusCode == 404))
+            {
+                Console.WriteLine($"User {user} not found.");
+            }
+        });
 
         // write to file
         await File.WriteAllTextAsync(cacheName, JsonConvert.SerializeObject(mapList));
