@@ -34,7 +34,7 @@ public static class OsuApi
 
     public const string ApiRoot = "https://osu.ppy.sh/api/v2";
 
-    private static readonly IConfigurationRoot Config =
+    public static readonly IConfigurationRoot Config =
         new ConfigurationBuilder().AddUserSecrets(Assembly.GetExecutingAssembly()).Build();
 
     /// <summary>

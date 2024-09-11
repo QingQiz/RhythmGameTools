@@ -1,13 +1,71 @@
 ﻿using System.Collections.Concurrent;
+using System.Globalization;
+using Flurl;
 using Flurl.Http;
 using Newtonsoft.Json;
 
 namespace OsuBeatmapDownloader;
 
-internal record BeatmapSet(int Id, string Title, string Artist, string Creator, string Status);
+internal record BeatmapSet(int Id, string Title, string Artist, string Creator);
 
 internal static class Program
 {
+    private static async Task<List<BeatmapSet>> GetRankedBeatmapSets()
+    {
+        var list = new List<BeatmapSet>();
+        var cache =
+            from file in Directory.GetFiles(".", "*-ranked.json")
+            select JsonConvert.DeserializeObject<List<BeatmapSet>>(File.ReadAllTextAsync(file).Result);
+        foreach (var i in cache) list.AddRange(i);
+        list = list.DistinctBy(x => x.Id).ToList();
+
+        while (true)
+        {
+            var date = (
+                from file in Directory.GetFiles(".", "*-ranked.json")
+                select Path.GetFileNameWithoutExtension(file)
+                into dateInFile
+                select dateInFile.Split('-')[0]
+                into dateInFile
+                select DateTimeOffset.FromUnixTimeMilliseconds(long.Parse(dateInFile))
+                into last
+                select last - TimeSpan.FromHours(2)
+            ).Aggregate(DateTimeOffset.MinValue, (current, last) => last > current ? last : current);
+
+            const int limit = 500;
+            var url = "https://osu.ppy.sh/api/get_beatmaps".SetQueryParams(new
+            {
+                k = OsuApi.Config["apiKey"],
+                // utc time in mysql format
+                since = date.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss"),
+                m     = 3,
+                s     = 0,
+                limit
+            });
+
+            Console.WriteLine("Requesting maps ranked after " + date.ToString("yyyy-MM-dd HH:mm:ss"));
+
+            var resString = await url.GetStringAsync();
+            var json      = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(resString);
+
+            var listSub = json.Select(b =>
+                new BeatmapSet(int.Parse(b["beatmapset_id"]), b["title"], b["artist"], b["creator"])
+            ).ToList();
+
+            list.AddRange(listSub);
+            list = list.DistinctBy(x => x.Id).ToList();
+
+            var maxT = json.Max(x =>
+                DateTime.ParseExact(x["approved_date"], "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
+            );
+
+            var cacheFileName = $"{new DateTimeOffset(maxT).ToUnixTimeMilliseconds()}-ranked.json";
+            await File.WriteAllTextAsync(cacheFileName, JsonConvert.SerializeObject(listSub));
+
+            if (json.Count < limit) return list;
+        }
+    }
+
     private static async Task<List<BeatmapSet>> GetUserBeatmapSets(string username)
     {
         var cacheName = DateTime.Now.ToString("[yyyy-MM-dd]") + $"[{username}].json";
@@ -41,7 +99,7 @@ internal static class Program
                     .GetJsonListAsync();
 
                 res.AddRange(j.Select(x =>
-                    new BeatmapSet((int)x.id, (string)x.title, (string)x.artist, (string)x.creator, t))
+                    new BeatmapSet((int)x.id, (string)x.title, (string)x.artist, (string)x.creator))
                 );
 
                 if (j.Count < limit) break;
@@ -137,8 +195,10 @@ internal static class Program
 
     private static async Task Main(string[] args)
     {
-        var mapList = await GetRecommendMapList();
+        var recommendMapList = await GetRecommendMapList();
+        var rankedMapList    = await GetRankedBeatmapSets();
 
+        var mapList = rankedMapList.Concat(recommendMapList).DistinctBy(x => x.Id).ToList();
         mapList = RemoveDownloadedBeatmaps(mapList);
 
         Console.WriteLine($"Downloading {mapList.Count} beatmaps");
