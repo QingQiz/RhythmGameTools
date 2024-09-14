@@ -12,13 +12,13 @@ internal static class Program
         if (File.Exists(Path.Join(Output, filename))) return true;
         if (File.Exists(Path.Join(Output, $"{urlSuffix}.png")))
         {
-            File.Copy(Path.Join(Output + $"{urlSuffix}.png"), Path.Join(Output, filename));
+            File.Copy(Path.Join(Output, $"{urlSuffix}.png"), Path.Join(Output, filename));
             return true;
         }
 
         try
         {
-            await $"https://www.diving-fish.com/covers/{urlSuffix.ToString().PadLeft(5, '0')}.png"
+            await $"https://assets.lxns.net/maimai/jacket/{urlSuffix.ToString()}.png"
                 .DownloadFileAsync(Output, filename);
             return true;
         }
@@ -67,7 +67,7 @@ internal static class Program
     {
         foreach (var alt in GetAlternateIds(id))
         {
-            if (!await Download($"{alt}.png", alt)) continue;
+            if (!await Download($"{id}.png", alt)) continue;
             return;
         }
         Console.WriteLine($"Cover Not Found: {id}");
