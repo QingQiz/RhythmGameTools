@@ -10,6 +10,11 @@ internal record BeatmapSet(int Id, string Title, string Artist, string Creator);
 
 internal static class Program
 {
+    private const string Output = @"C:\Users\sofee\Desktop\osu!songs";
+    private const string StablePath = @"O:\GameStorage\osu!\Songs";
+
+    private static HashSet<int> _downloaded = new();
+
     private static async Task<List<BeatmapSet>> GetRankedBeatmapSets()
     {
         var list = new List<BeatmapSet>();
@@ -71,19 +76,12 @@ internal static class Program
         var cacheName = DateTime.Now.ToString("[yyyy-MM-dd]") + $"[{username}].json";
         if (File.Exists(cacheName))
         {
-            // deserialize
             return JsonConvert.DeserializeObject<List<BeatmapSet>>(await File.ReadAllTextAsync(cacheName));
         }
 
         var user = await OsuApi.Request(OsuApi.ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync();
 
-        var type = new[]
-        {
-            "graveyard",
-            "guest",
-            "loved",
-            "ranked"
-        };
+        var type = new[] { "graveyard", "guest", "loved", "ranked" };
 
         var res = new List<BeatmapSet>();
 
@@ -175,26 +173,78 @@ internal static class Program
 
     private static List<BeatmapSet> RemoveDownloadedBeatmaps(IList<BeatmapSet> mapList)
     {
-        var set = Directory
-            .GetFiles(Output, "*.osz", SearchOption.TopDirectoryOnly)
-            .Concat(Directory.GetDirectories(Output, "*", SearchOption.TopDirectoryOnly))
-            .Select(Path.GetFileName)
-            .Select(x => x!.Split(' ', 2)[0])
-            .Where(x => int.TryParse(x, out _))
-            .Select(int.Parse)
-            .Where(x => x > 10)
-            .ToHashSet();
+        if (File.Exists("downloaded.txt"))
+        {
+            _downloaded = File.ReadAllLines("downloaded.txt").Select(int.Parse).ToHashSet();
+        }
+        else
+        {
+            var osz =
+                from d in new[] { StablePath, Output }
+                from x in Directory.GetFiles(d, "*.osz", SearchOption.TopDirectoryOnly)
+                select x;
 
+            var dir =
+                from d in new[] { StablePath, Output }
+                from y in Directory.GetDirectories(d, "*", SearchOption.TopDirectoryOnly)
+                select y;
+
+            var downloadList =
+                from x in new[] { osz, dir }
+                from y in x
+                select Path.GetFileName(y).Split(' ', 2)[0]
+                into idStr
+                where int.TryParse(idStr, out _)
+                select int.Parse(idStr);
+
+            _downloaded = downloadList.ToHashSet();
+        }
         return mapList
             .DistinctBy(x => x.Id)
-            .Where(x => !set.Contains(x.Id))
+            .Where(x => !_downloaded.Contains(x.Id))
             .ToList();
     }
 
-    private const string Output = @"O:\GameStorage\osu!\Songs";
-
-    private static async Task Main(string[] args)
+    private static void DownloadTask(ConcurrentQueue<(BeatmapSet Map, int Count)> queue, int maxRetry)
     {
+        while (queue.TryDequeue(out var map))
+        {
+            try
+            {
+                OsuApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
+                Console.WriteLine($"Downloaded {map.Map.Id} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
+                lock (_downloaded)
+                {
+                    _downloaded.Add(map.Map.Id);
+                    File.WriteAllLines("downloaded.txt", _downloaded.Select(x => x.ToString()));
+                }
+            }
+            catch (Exception e)
+            {
+                if (map.Count < maxRetry)
+                {
+                    Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. RETRYING... ({map.Count + 1}/{maxRetry}");
+                    queue.Enqueue((map.Map, map.Count + 1));
+                }
+                else
+                {
+                    Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. GIVE UP.");
+                }
+            }
+            finally
+            {
+                Console.Write($"Remaining {queue.Count} beatmaps ");
+            }
+        }
+    }
+
+    private static async Task Main()
+    {
+        if (!Directory.Exists(Output))
+        {
+            Directory.CreateDirectory(Output);
+        }
+
         var recommendMapList = await GetRecommendMapList();
         var rankedMapList    = await GetRankedBeatmapSets();
 
@@ -203,7 +253,6 @@ internal static class Program
 
         Console.WriteLine($"Downloading {mapList.Count} beatmaps");
 
-        const int maxRetry = 10;
         // create thread pool
         var queue = new ConcurrentQueue<(BeatmapSet Map, int Count)>(mapList.Select(x => (x, 0)));
 
@@ -212,35 +261,10 @@ internal static class Program
 
         for (var i = 0; i < tasks.Length; i++)
         {
-            tasks[i] = Task.Run(() =>
-            {
-                while (queue.TryDequeue(out var map))
-                {
-                    try
-                    {
-                        OsuApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
-                        Console.WriteLine($"Downloaded {map.Map.Id} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
-                    }
-                    catch (Exception e)
-                    {
-                        if (map.Count < maxRetry)
-                        {
-                            Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. RETRYING...");
-                            queue.Enqueue((map.Map, map.Count + 1));
-                        }
-                        else
-                        {
-                            Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. GIVE UP.");
-                        }
-                    }
-                    finally
-                    {
-                        Console.Write($"Remaining {queue.Count} beatmaps ");
-                    }
-                }
-            });
+            tasks[i] = Task.Run(() => DownloadTask(queue, 10));
         }
 
         await Task.WhenAll(tasks);
+        await File.WriteAllLinesAsync("downloaded.txt", _downloaded.Select(x => x.ToString()));
     }
 }
