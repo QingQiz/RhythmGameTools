@@ -1,4 +1,7 @@
-﻿using System.Collections.Concurrent;
+﻿#define TRACE_DOWNLOAD
+#undef TRACE_DOWNLOAD
+
+using System.Collections.Concurrent;
 using System.Globalization;
 using Flurl;
 using Flurl.Http;
@@ -14,6 +17,13 @@ internal static class Program
     private const string StablePath = @"O:\GameStorage\osu!\Songs";
 
     private static HashSet<int> _downloaded = new();
+
+#if TRACE_DOWNLOAD
+    private static void UpdateDownloaded()
+    {
+        File.WriteAllLines("downloaded.txt", _downloaded.Select(x => x.ToString()));
+    }
+#endif
 
     private static async Task<List<BeatmapSet>> GetRankedBeatmapSets()
     {
@@ -71,6 +81,18 @@ internal static class Program
         }
     }
 
+    private static bool HandleException(Exception e)
+    {
+        while (e is AggregateException ae)
+        {
+            e = ae.InnerExceptions.First();
+        }
+        if (e is not FlurlHttpException fe) return false;
+
+        Console.WriteLine(fe.Message);
+        return true;
+    }
+
     private static async Task<List<BeatmapSet>> GetUserBeatmapSets(string username)
     {
         var cacheName = DateTime.Now.ToString("[yyyy-MM-dd]") + $"[{username}].json";
@@ -80,6 +102,7 @@ internal static class Program
         }
 
         var user = await OsuApi.Request(OsuApi.ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync();
+        var uri  = OsuApi.ApiRoot + $"/users/{user.id}/beatmapsets";
 
         var type = new[] { "graveyard", "guest", "loved", "ranked" };
 
@@ -92,15 +115,22 @@ internal static class Program
 
             while (true)
             {
-                var j = await OsuApi
-                    .Request(OsuApi.ApiRoot + $"/users/{user.id}/beatmapsets/{t}?limit={limit}&offset={offset}")
-                    .GetJsonListAsync();
+                try
+                {
+                    var j = await OsuApi
+                        .Request($"{uri}/{t}?limit={limit}&offset={offset}")
+                        .GetJsonListAsync();
 
-                res.AddRange(j.Select(x =>
-                    new BeatmapSet((int)x.id, (string)x.title, (string)x.artist, (string)x.creator))
-                );
-
-                if (j.Count < limit) break;
+                    res.AddRange(j.Select(x =>
+                        new BeatmapSet((int)x.id, (string)x.title, (string)x.artist, (string)x.creator))
+                    );
+                    if (j.Count < limit) break;
+                }
+                catch (Exception e)
+                {
+                    if (HandleException(e)) continue;
+                    break;
+                }
 
                 offset += limit;
             }
@@ -146,6 +176,7 @@ internal static class Program
 
         Parallel.ForEach(userList, new ParallelOptions { MaxDegreeOfParallelism = 8 }, user =>
         {
+            RETRY:
             try
             {
                 Console.WriteLine("Requesting " + user);
@@ -163,6 +194,11 @@ internal static class Program
             {
                 Console.WriteLine($"User {user} not found.");
             }
+            catch
+            {
+                Console.WriteLine("RETRY Requesting " + user);
+                goto RETRY;
+            }
         });
 
         // write to file
@@ -173,12 +209,14 @@ internal static class Program
 
     private static List<BeatmapSet> RemoveDownloadedBeatmaps(IList<BeatmapSet> mapList)
     {
+#if TRACE_DOWNLOAD
         if (File.Exists("downloaded.txt"))
         {
             _downloaded = File.ReadAllLines("downloaded.txt").Select(int.Parse).ToHashSet();
         }
         else
         {
+#endif
             var osz =
                 from d in new[] { StablePath, Output }
                 from x in Directory.GetFiles(d, "*.osz", SearchOption.TopDirectoryOnly)
@@ -198,7 +236,10 @@ internal static class Program
                 select int.Parse(idStr);
 
             _downloaded = downloadList.ToHashSet();
+#if TRACE_DOWNLOAD
         }
+        UpdateDownloaded();
+#endif
         return mapList
             .DistinctBy(x => x.Id)
             .Where(x => !_downloaded.Contains(x.Id))
@@ -213,11 +254,13 @@ internal static class Program
             {
                 OsuApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
                 Console.WriteLine($"Downloaded {map.Map.Id} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
+#if TRACE_DOWNLOAD
                 lock (_downloaded)
                 {
                     _downloaded.Add(map.Map.Id);
-                    File.WriteAllLines("downloaded.txt", _downloaded.Select(x => x.ToString()));
+                    UpdateDownloaded();
                 }
+#endif
             }
             catch (Exception e)
             {
@@ -265,6 +308,8 @@ internal static class Program
         }
 
         await Task.WhenAll(tasks);
-        await File.WriteAllLinesAsync("downloaded.txt", _downloaded.Select(x => x.ToString()));
+#if TRACE_DOWNLOAD
+        UpdateDownloaded();
+#endif
     }
 }
