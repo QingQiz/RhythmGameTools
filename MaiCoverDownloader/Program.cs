@@ -1,25 +1,26 @@
-﻿using System.Dynamic;
-using Flurl.Http;
+﻿using Flurl.Http;
+using Newtonsoft.Json;
 
 namespace MaiCoverDownloader;
 
 internal static class Program
 {
-    private const string Output = @"C:\Users\sofee\Desktop\workspace\QQBOT\Marisa.Frontend\public\assets\maimai\cover";
+    private const string Output = @"C:\Users\sofee\Desktop\workspace\QQBOT\Marisa.Frontend\public\assets\maimai";
 
     private static async Task<bool> Download(string filename, int urlSuffix)
     {
-        if (File.Exists(Path.Join(Output, filename))) return true;
-        if (File.Exists(Path.Join(Output, $"{urlSuffix}.png")))
+        var coverPath = Path.Join(Output, "cover");
+        if (File.Exists(Path.Join(coverPath, filename))) return true;
+        if (File.Exists(Path.Join(coverPath, $"{urlSuffix}.png")))
         {
-            File.Copy(Path.Join(Output, $"{urlSuffix}.png"), Path.Join(Output, filename));
+            File.Copy(Path.Join(coverPath, $"{urlSuffix}.png"), Path.Join(coverPath, filename));
             return true;
         }
 
         try
         {
             await $"https://assets.lxns.net/maimai/jacket/{urlSuffix.ToString()}.png"
-                .DownloadFileAsync(Output, filename);
+                .DownloadFileAsync(coverPath, filename);
             return true;
         }
         catch (FlurlHttpException e) when (e.StatusCode == 404)
@@ -62,7 +63,7 @@ internal static class Program
     {
         Console.WriteLine(string.Join(", ", x));
     }
-    
+
     private static async Task Download4Id(int id)
     {
         foreach (var alt in GetAlternateIds(id))
@@ -73,13 +74,15 @@ internal static class Program
         Console.WriteLine($"Cover Not Found: {id}");
     }
 
-    public static async Task Main(string[] args)
+    public static async Task Main()
     {
-        var rep = await "https://www.diving-fish.com/api/maimaidxprober/music_data"
-            .GetJsonAsync<ExpandoObject[]>() as dynamic[];
+        var text = await "https://www.diving-fish.com/api/maimaidxprober/music_data".GetStringAsync();
+        var rep  = JsonConvert.DeserializeObject<dynamic[]>(text);
 
-        var ids = rep.Select(i => int.Parse(i.id.ToString())).Cast<int>().ToList();
+        var w   = File.WriteAllTextAsync(Path.Join(Output, "SongInfo.json"), JsonConvert.SerializeObject(rep, Formatting.Indented));
+        var ids = rep!.Select(i => int.Parse(i.id.ToString())).Cast<int>().ToList();
 
         await Task.WhenAll(ids.Select(Download4Id));
+        await w;
     }
 }
