@@ -13,8 +13,13 @@ internal record BeatmapSet(int Id, string Title, string Artist, string Creator);
 
 internal static class Program
 {
-    private const string Output = @"C:\Users\sofee\Desktop\osu!songs";
     private const string StablePath = @"O:\GameStorage\osu!\Songs";
+
+#if TRACE_DOWNLOAD
+    private const string Output = @"C:\Users\sofee\Desktop\osu!songs";
+#else
+    private const string Output = StablePath;
+#endif
 
     private static HashSet<int> _downloaded = new();
 
