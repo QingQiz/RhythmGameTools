@@ -15,7 +15,7 @@ public static class Program
             ? new HashSet<string>()
             : new HashSet<string> { ConvertToSimplified(key) };
     }
-    
+
     private static string Escape(string s)
     {
         return s.Contains('"') ? $"\"{s.Replace("\"", "\"\"")}\"" : s;
@@ -138,21 +138,57 @@ public static class Program
         return sbS.ToString();
     }
 
-    public static async Task Main(string[] args)
+    private static string WinPath2Wsl(string path)
     {
+        var x = path.Split(':', 2);
+        x[0] = x[0].ToLower();
+        x[1] = x[1].Replace('\\', '/');
+        return "/mnt/" + x[0] + x[1];
+    }
+    
+    private static string WslPath2Win(string path)
+    {
+        var x = path.Split('/', 4);
+        x[2] = x[2].ToUpper();
+        x[3] = x[3].Replace('/', '\\');
+        return x[2] + ":" + x[3];
+    }
+
+    public static async Task Main()
+    {
+        const string maiFile = "MaiMaiSongAliasTemp.txt";
+        const string chuFile = "ChunithmSongAliasTemp.txt";
+
+        var tempPath = Path.GetTempPath();
+        var tempPathWsl = WinPath2Wsl(tempPath);
+        var p1       = System.Diagnostics.Process.Start("wsl", $"scp tx:/home/ubuntu/bot/MarisaBotTemp/maimai/{maiFile} {tempPathWsl}");
+        var p2       = System.Diagnostics.Process.Start("wsl", $"scp tx:/home/ubuntu/bot/MarisaBotTemp/chunithm/{chuFile} {tempPathWsl}");
+        p1.Start();
+        p2.Start();
+        await p1.WaitForExitAsync();
+        await p2.WaitForExitAsync();
+        
+        // empty file in server
+        p1 = System.Diagnostics.Process.Start("wsl", $"ssh tx 'echo > /home/ubuntu/bot/MarisaBotTemp/maimai/{maiFile}'");
+        p2 = System.Diagnostics.Process.Start("wsl", $"ssh tx 'echo > /home/ubuntu/bot/MarisaBotTemp/chunithm/{chuFile}'");
+        p1.Start();
+        p2.Start();
+        await p1.WaitForExitAsync();
+        await p2.WaitForExitAsync();
+
         var chuMd = (JsonSerializer.Deserialize<ExpandoObject[]>(
                 await File.ReadAllTextAsync("C:/Users/sofee/Desktop/workspace/QQBOT/Marisa.Frontend/public/assets/chunithm/SongInfo.json")
             )! as dynamic[])
             .Select(x => x.Title.ToString()).Where(x => x != null).Cast<string>().ToHashSet();
-
+        
         var maiMd = (await "https://www.diving-fish.com/api/maimaidxprober/music_data"
                 .GetJsonAsync<ExpandoObject[]>() as dynamic[])
             .Select(x => x.title.ToString()).Where(x => x != null).Cast<string>().ToHashSet();
-
+        
         Merge(maiMd, @"C:\Users\sofee\Desktop\workspace\QQBOT\Marisa.Frontend\public\assets\maimai\aliases.tsv",
-            @"f:\MarisaBotTemp\maimai\MaiMaiSongAliasTemp.txt");
-
+            $@"{tempPath}\{maiFile}");
+        
         Merge(chuMd, @"C:\Users\sofee\Desktop\workspace\QQBOT\Marisa.Frontend\public\assets\chunithm\aliases.tsv",
-            @"f:\MarisaBotTemp\chunithm\ChunithmSongAliasTemp.txt");
+            $@"{tempPath}\{chuFile}");
     }
 }
