@@ -1,11 +1,10 @@
-﻿#define TRACE_DOWNLOAD
-#undef TRACE_DOWNLOAD
-
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Globalization;
 using Flurl;
 using Flurl.Http;
 using Newtonsoft.Json;
+using osu.Game.Beatmaps;
+using Realms;
 
 namespace OsuBeatmapDownloader;
 
@@ -13,22 +12,10 @@ internal record BeatmapSet(int Id, string Title, string Artist, string Creator);
 
 internal static class Program
 {
-    private const string StablePath = @"O:\GameStorage\osu!\Songs";
+    private const string LazerPath = @"O:\GameStorage\osu!lazer";
+    private const string Output = LazerPath;
 
-#if TRACE_DOWNLOAD
-    private const string Output = @"C:\Users\sofee\Desktop\osu!songs";
-#else
-    private const string Output = StablePath;
-#endif
-
-    private static HashSet<int> _downloaded = new();
-
-#if TRACE_DOWNLOAD
-    private static void UpdateDownloaded()
-    {
-        File.WriteAllLines("downloaded.txt", _downloaded.Select(x => x.ToString()));
-    }
-#endif
+    private static HashSet<int> _downloaded = [];
 
     private static async Task<List<BeatmapSet>> GetRankedBeatmapSets()
     {
@@ -214,37 +201,18 @@ internal static class Program
 
     private static List<BeatmapSet> RemoveDownloadedBeatmaps(IList<BeatmapSet> mapList)
     {
-#if TRACE_DOWNLOAD
-        if (File.Exists("downloaded.txt"))
+        var fp    = Path.Join(LazerPath, "client.realm");
+        var fpNew = Path.Join(LazerPath, "client.realm.new");
+        File.Copy(fp, fpNew, true);
+
+        using (var realm = Realm.GetInstance(new RealmConfiguration(fpNew) { SchemaVersion = 4700 }))
         {
-            _downloaded = File.ReadAllLines("downloaded.txt").Select(int.Parse).ToHashSet();
+            var info = realm.All<BeatmapSetInfo>().ToList().Select(x => x.OnlineID);
+            _downloaded = info.ToHashSet();
         }
-        else
-        {
-#endif
-            var osz =
-                from d in new[] { StablePath, Output }
-                from x in Directory.GetFiles(d, "*.osz", SearchOption.TopDirectoryOnly)
-                select x;
+        File.Delete(fpNew);
+        File.Delete(fpNew + ".lock");
 
-            var dir =
-                from d in new[] { StablePath, Output }
-                from y in Directory.GetDirectories(d, "*", SearchOption.TopDirectoryOnly)
-                select y;
-
-            var downloadList =
-                from x in new[] { osz, dir }
-                from y in x
-                select Path.GetFileName(y).Split(' ', 2)[0]
-                into idStr
-                where int.TryParse(idStr, out _)
-                select int.Parse(idStr);
-
-            _downloaded = downloadList.ToHashSet();
-#if TRACE_DOWNLOAD
-        }
-        UpdateDownloaded();
-#endif
         return mapList
             .DistinctBy(x => x.Id)
             .Where(x => !_downloaded.Contains(x.Id))
@@ -259,13 +227,6 @@ internal static class Program
             {
                 OsuApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
                 Console.WriteLine($"Downloaded {map.Map.Id} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
-#if TRACE_DOWNLOAD
-                lock (_downloaded)
-                {
-                    _downloaded.Add(map.Map.Id);
-                    UpdateDownloaded();
-                }
-#endif
             }
             catch (Exception e)
             {
@@ -313,8 +274,5 @@ internal static class Program
         }
 
         await Task.WhenAll(tasks);
-#if TRACE_DOWNLOAD
-        UpdateDownloaded();
-#endif
     }
 }
