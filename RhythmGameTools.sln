@@ -43,6 +43,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Osu7kBeatmapExtractor", "Os
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OszToAndroidCopier", "OszToAndroidCopier\OszToAndroidCopier.csproj", "{F21C1D11-C0C9-4821-B318-E770AE673B42}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SearchSongFromLazer", "SearchSongFromLazer\SearchSongFromLazer.csproj", "{987E022D-38EE-4794-A848-B0412E32E2E8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,10 @@ Global
 		{F21C1D11-C0C9-4821-B318-E770AE673B42}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F21C1D11-C0C9-4821-B318-E770AE673B42}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F21C1D11-C0C9-4821-B318-E770AE673B42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{987E022D-38EE-4794-A848-B0412E32E2E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{987E022D-38EE-4794-A848-B0412E32E2E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{987E022D-38EE-4794-A848-B0412E32E2E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{987E022D-38EE-4794-A848-B0412E32E2E8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -119,6 +125,7 @@ Global
 		{C75A922A-6301-40CD-A546-5C3221BFD826} = {07586178-A1F5-4C55-9780-A219FE6C51F5}
 		{87F9E914-A34F-433C-B561-9C3459661B47} = {FEE99E9B-D0B3-4B43-81D3-CC90EBF86B2D}
 		{F21C1D11-C0C9-4821-B318-E770AE673B42} = {FEE99E9B-D0B3-4B43-81D3-CC90EBF86B2D}
+		{987E022D-38EE-4794-A848-B0412E32E2E8} = {FEE99E9B-D0B3-4B43-81D3-CC90EBF86B2D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D2C5AA84-FAE8-4C39-9212-379E38FE4ED8}
