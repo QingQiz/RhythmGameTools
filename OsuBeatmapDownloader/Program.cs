@@ -219,6 +219,8 @@ internal static class Program
             .ToList();
     }
 
+    private static int _cnt;
+    private static readonly object CntLk = new();
     private static void DownloadTask(ConcurrentQueue<(BeatmapSet Map, int Count)> queue, int maxRetry)
     {
         while (queue.TryDequeue(out var map))
@@ -227,6 +229,7 @@ internal static class Program
             {
                 OsuApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
                 Console.WriteLine($"Downloaded {map.Map.Id} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
+                lock (CntLk) _cnt--;
             }
             catch (Exception e)
             {
@@ -238,11 +241,12 @@ internal static class Program
                 else
                 {
                     Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. GIVE UP.");
+                    lock (CntLk) _cnt--;
                 }
             }
             finally
             {
-                Console.Write($"Remaining {queue.Count} beatmaps ");
+                Console.Write($"Remaining {_cnt} beatmaps ");
             }
         }
     }
@@ -261,6 +265,7 @@ internal static class Program
         mapList = RemoveDownloadedBeatmaps(mapList);
 
         Console.WriteLine($"Downloading {mapList.Count} beatmaps");
+        _cnt = mapList.Count;
 
         // create thread pool
         var queue = new ConcurrentQueue<(BeatmapSet Map, int Count)>(mapList.Select(x => (x, 0)));
