@@ -60,7 +60,7 @@ public static class Program
         Directory.CreateDirectory(Path.Join(output, "cover"));
         Directory.CreateDirectory(Path.Join(output, "chart"));
 
-        var versionName = new Dictionary<string, string>()
+        var versionName = new Dictionary<string, string>
         {
             { "v1 1.00.00", "CHUNITHM" },
             { "v1 1.05.00", "CHUNITHM PLUS" },
@@ -79,7 +79,9 @@ public static class Program
             { "v2 2.10.00", "CHUNITHM SUN" },
             { "v2 2.15.00", "CHUNITHM SUN PLUS" },
             { "v2 2.20.00", "CHUNITHM LUMINOUS" },
-            { "v2 2.25.00", "CHUNITHM LUMINOUS PLUS" }
+            { "v2 2.25.00", "CHUNITHM LUMINOUS PLUS" },
+            { "v2 2.30.00", "CHUNITHM VERSE" },
+            { "v2 2.35.00", "CHUNITHM VERSE PLUS" }
         };
 
         var list = new Dictionary<long, Song>();
