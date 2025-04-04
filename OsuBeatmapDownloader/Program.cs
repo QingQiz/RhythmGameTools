@@ -145,7 +145,7 @@ internal static class Program
 
         var userList = new[]
         {
-            //
+            // 7k
             "Evening", "Kim_GodSSI", "Jinjin", "_underjoy", "Wonki", "taba2", "Hehoooh", "paulkappa", "Remuring",
             "paradoxus_",
             "_Kobii", "Blocko", "ExNeko", "Alsty-", "Schopfer", "Tropicar", "_Stan", "erased self", "-NoName-",
@@ -161,12 +161,15 @@ internal static class Program
             "sankansuki", "lenpai", "Flexo123", "qodtjr", "tangjinxi", "Kawawa", "17VA", "Reba", "Pengdoll", "LostCool",
             "Critical_Star", "Rurikon_", "Wilben_Chan", "- Minato Aqua -", "Entozer", "Cuppp", "pwhk", "Nivrad00",
             //
-            "tyrcs", "ruka", "Leeju"
+            "tyrcs", "ruka", "Leeju",
+            // 6k
+            "QQwiwi2012", "Arkman", "[Crz]Derrick", "doubu","_IceRain", "[Crz]Emperor", "Alipay", "HMillion", "Benson_",
+            "[Crz]sunnyxxy"
         };
 
         var mapList = new List<BeatmapSet>();
 
-        Parallel.ForEach(userList, new ParallelOptions { MaxDegreeOfParallelism = 8 }, user =>
+        Parallel.ForEach(userList.Distinct(), new ParallelOptions { MaxDegreeOfParallelism = 8 }, user =>
         {
             RETRY:
             try
