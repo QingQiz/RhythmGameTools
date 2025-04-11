@@ -47,11 +47,16 @@ class Program
                 Console.WriteLine($"{i++}. {Path.Join(LazerPath, "files", key)} -> {value}");
             }
 
-            Console.Write("选一个：");
-            i = int.Parse(Console.ReadLine()!);
+            while (true)
+            {
+                Console.Write("选一个：");
+                var res = int.TryParse(Console.ReadLine()!, out i);
+                if (!res) continue;
 
-            File.Copy(Path.Join(LazerPath, "files", l[i].Key), Path.Join(LazerPath, l[i].Value), true);
-            Process.Start("explorer.exe", $"/e, /select, \"{Path.Join(LazerPath, l[i].Value)}\"");
+                File.Copy(Path.Join(LazerPath, "files", l[i].Key), Path.Join(LazerPath, l[i].Value), true);
+                Process.Start("explorer.exe", $"/e, /select, \"{Path.Join(LazerPath, l[i].Value)}\"");
+                break;
+            }
         }
         File.Delete(fpNew);
         File.Delete(fpNew + ".lock");
@@ -65,6 +70,7 @@ class Program
         if (string.IsNullOrWhiteSpace(title)) title   = beatmap.Metadata.Title;
         if (string.IsNullOrWhiteSpace(author)) author = beatmap.Metadata.Artist;
 
-        return $"{author} - {title} ---- {beatmap.DifficultyName}.{beatmap.Metadata.AudioFile.Split('.').Last()}";;
+        return $"{author} - {title} ---- {beatmap.DifficultyName}.{beatmap.Metadata.AudioFile.Split('.').Last()}";
+        ;
     }
 }
