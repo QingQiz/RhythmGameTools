@@ -8,8 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="ppy.osu.Game" Version="2025.118.2" />
-      <PackageReference Include="Realm" Version="20.1.0" />
+      <ProjectReference Include="..\OsuApi\OsuApi.csproj" />
     </ItemGroup>
 
 </Project>

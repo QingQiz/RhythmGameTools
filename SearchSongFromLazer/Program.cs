@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using osu.Game.Beatmaps;
 using osu.Game.Extensions;
-using Realms;
+using OsuApi;
 
 namespace SearchSongFromLazer;
 
@@ -9,20 +9,15 @@ class Program
 {
     private const string LazerPath = @"O:\GameStorage\osu!lazer";
 
-    static void Main(string[] args)
+    static void Main()
     {
         Console.Write("Title: ");
+
         var title = Console.ReadLine()!;
 
-        var fp    = Path.Join(LazerPath, "client.realm");
-        var fpNew = Path.Join(LazerPath, "client.realm.new");
-
-        File.Copy(fp, fpNew, true);
-
-        using (var realm = Realm.GetInstance(new RealmConfiguration(fpNew) { SchemaVersion = 4700 }))
+        LazerDbApi.WithAllBeatmapSetInfo(LazerPath, beatmapSets =>
         {
-            var beatmapSets = realm.All<BeatmapSetInfo>().ToList();
-            var beatmaps    = beatmapSets.SelectMany(x => x.Beatmaps);
+            var beatmaps = beatmapSets.SelectMany(x => x.Beatmaps);
             var matched = beatmaps.Where(x =>
                 x.Metadata.Title.Contains(title, StringComparison.OrdinalIgnoreCase)
              || x.Metadata.TitleUnicode.Contains(title, StringComparison.OrdinalIgnoreCase)
@@ -40,6 +35,7 @@ class Program
                 }
             }
             var l = dict.ToList();
+
             //print dict
             var i = 0;
             foreach (var (key, value) in l)
@@ -57,9 +53,7 @@ class Program
                 Process.Start("explorer.exe", $"/e, /select, \"{Path.Join(LazerPath, l[i].Value)}\"");
                 break;
             }
-        }
-        File.Delete(fpNew);
-        File.Delete(fpNew + ".lock");
+        });
     }
 
     private static string BuildAudioName(BeatmapInfo beatmap)

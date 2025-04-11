@@ -1,8 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using Flurl.Http;
 using Newtonsoft.Json;
-using osu.Game.Beatmaps;
-using Realms;
+using OsuApi;
 
 namespace OsuBeatmapDownloader;
 
@@ -34,7 +33,7 @@ internal static class Program
         "QQwiwi2012", "Arkman", "[Crz]Derrick", "doubu", "_IceRain", "[Crz]Emperor", "Alipay", "HMillion", "Benson_",
         "[Crz]sunnyxxy", "BKwind", "tyrcs",
         // 7k 自己找的
-        "[Crz]Emperor-",
+        "[Crz]Emperor-", "richardfeder", "soulseason", "MEIDAN", "shiyu1213",
     ];
 
 
@@ -56,7 +55,7 @@ internal static class Program
             try
             {
                 Console.WriteLine("Requesting " + user);
-                var res = OsuApi.GetUserBeatmapSets(user).Result;
+                var res = OsuWebApi.GetUserBeatmapSets(user).Result;
                 lock (mapList)
                 {
                     mapList.AddRange(res);
@@ -85,23 +84,14 @@ internal static class Program
 
     private static List<BeatmapSet> RemoveDownloadedBeatmaps(IList<BeatmapSet> mapList)
     {
-        var fp    = Path.Join(LazerPath, "client.realm");
-        var fpNew = Path.Join(LazerPath, "client.realm.new");
-        File.Copy(fp, fpNew, true);
-
-        HashSet<int> downloaded;
-        using (var realm = Realm.GetInstance(new RealmConfiguration(fpNew) { SchemaVersion = 4700 }))
+        return LazerDbApi.WithAllBeatmapSetInfo(LazerPath, list =>
         {
-            var info = realm.All<BeatmapSetInfo>().ToList().Select(x => x.OnlineID);
-            downloaded = info.ToHashSet();
-        }
-        File.Delete(fpNew);
-        File.Delete(fpNew + ".lock");
-
-        return mapList
-            .DistinctBy(x => x.Id)
-            .Where(x => !downloaded.Contains(x.Id))
-            .ToList();
+            var downloaded = list.Select(x => x.OnlineID).ToHashSet();
+            return mapList
+                .DistinctBy(x => x.Id)
+                .Where(x => !downloaded.Contains(x.Id))
+                .ToList();
+        });
     }
 
     private static int _cnt;
@@ -113,7 +103,7 @@ internal static class Program
         {
             try
             {
-                OsuApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
+                OsuWebApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
                 Console.WriteLine($"Downloaded {map.Map.Id} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
                 lock (CntLk) _cnt--;
             }
@@ -145,7 +135,7 @@ internal static class Program
         }
 
         var recommendMapList = await GetRecommendMapList();
-        var rankedMapList    = await OsuApi.GetRankedBeatmapSets();
+        var rankedMapList    = await OsuWebApi.GetRankedBeatmapSets();
 
         var mapList = rankedMapList.Concat(recommendMapList).DistinctBy(x => x.Id).ToList();
         mapList = RemoveDownloadedBeatmaps(mapList);

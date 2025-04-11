@@ -7,11 +7,11 @@ using Flurl.Http;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
-namespace OsuBeatmapDownloader;
+namespace OsuApi;
 
 public record BeatmapSet(int Id, string Title, string Artist, string Creator);
 
-public static class OsuApi
+public static class OsuWebApi
 {
     #region req with auth
 
@@ -22,7 +22,7 @@ public static class OsuApi
     {
         get
         {
-            lock (typeof(OsuApi))
+            lock (typeof(OsuWebApi))
             {
                 if (_tokenExpire == null || DateTime.Now > _tokenExpire || _token == null)
                 {
@@ -170,7 +170,7 @@ public static class OsuApi
             const int limit = 500;
             var url = "https://osu.ppy.sh/api/get_beatmaps".SetQueryParams(new
             {
-                k = OsuApi.Config["apiKey"],
+                k = OsuWebApi.Config["apiKey"],
                 // utc time in mysql format
                 since = date.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss"),
                 m     = 3,
@@ -209,8 +209,8 @@ public static class OsuApi
             return JsonConvert.DeserializeObject<List<BeatmapSet>>(await File.ReadAllTextAsync(cacheName))!;
         }
 
-        var user = await OsuApi.Request(OsuApi.ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync();
-        var uri  = OsuApi.ApiRoot + $"/users/{user.id}/beatmapsets";
+        var user = await OsuWebApi.Request(OsuWebApi.ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync();
+        var uri  = OsuWebApi.ApiRoot + $"/users/{user.id}/beatmapsets";
 
         var type = new[] { "graveyard", "guest", "loved", "ranked" };
 
@@ -225,7 +225,7 @@ public static class OsuApi
             {
                 try
                 {
-                    var j = await OsuApi
+                    var j = await OsuWebApi
                         .Request($"{uri}/{t}?limit={limit}&offset={offset}")
                         .GetJsonListAsync();
 
