@@ -2,7 +2,18 @@
 using System.IO.Compression;
 using System.Text;
 
+
 namespace OsuSkinGen;
+
+internal static class Config
+{
+    public const string Author = "QINGQIZ";
+    public const int ColumnWidth = 42;
+    public const int HitPosition = 415;
+    public const int ScorePosition = 250;
+    public const int NoteHeightScale = 50;
+    public static readonly string Title = $"SKIN N{ColumnWidth}-{NoteHeightScale} P{HitPosition}";
+}
 
 public static class Program
 {
@@ -27,19 +38,12 @@ public static class Program
 
     private static string GetConfigForKeyCount(int keyCount, int monitorW, int monitorH)
     {
-        var config = new
-        {
-            ColumnWidth   = 45,
-            HitPosition   = 415,
-            ScorePosition = 250,
-        };
-
-        var columnStart = (int)Math.Round((480.0 / monitorH * monitorW - keyCount * config.ColumnWidth) / 2);
+        var columnStart = (int)Math.Round((480.0 / monitorH * monitorW - keyCount * Config.ColumnWidth) / 2);
         // repeat 7 times
 
-        var colW         = string.Join(',', Enumerable.Range(0, keyCount).Select(_ => config.ColumnWidth));
+        var colW         = string.Join(',', Enumerable.Range(0, keyCount).Select(_ => Config.ColumnWidth));
         var laneHitColor = string.Join('\n', Enumerable.Range(0, keyCount).Select(i => $"ColourLight{i + 1}: 0, 0, 0"));
-        var laneBgColor  = string.Join('\n', Enumerable.Range(0, keyCount).Select(i => $"Colour{i + 1}: 0, 0, 0"));
+        var laneBgColor  = string.Join('\n', Enumerable.Range(0, keyCount).Select(i => $"Colour{i + 1}: 0, 0, 0, 0"));
 
         var laneMap = new Dictionary<int, int[]>
         {
@@ -61,10 +65,10 @@ public static class Program
              ColumnStart: {columnStart}
              //StageBottom: StageBottom
 
-             HitPosition: {config.HitPosition}
-             LightPosition: {config.HitPosition}
-             ScorePosition:{config.ScorePosition}
-             {(keyCount == 6 ? $"ColumnSpacing: 0,0,{config.ColumnWidth},0,0" : "")}
+             HitPosition: {Config.HitPosition}
+             LightPosition: {Config.HitPosition}
+             ScorePosition:{Config.ScorePosition}
+             {(keyCount == 6 ? $"ColumnSpacing: 0,0,{Config.ColumnWidth},0,0" : "")}
 
              SpecialStyle: 0
              UpsideDown: 0
@@ -72,7 +76,7 @@ public static class Program
 
              LightFramePerSecond: 40
              ColumnWidth: {colW}
-             WidthForNoteHeightScale: 55
+             WidthForNoteHeightScale: {Config.NoteHeightScale}
 
              BarlineHeight: 1.2
              FontCombo: combo
@@ -126,8 +130,8 @@ public static class Program
         var header =
             $"""
              [General]
-             Name: QINGQIZ's Skin v{v}
-             Author: QINGQIZ
+             Name: {Config.Title} v{v}
+             Author: {Config.Author}
              Version: latest
              SliderBallFlip: 1
              CursorRotate: 0
@@ -170,7 +174,7 @@ public static class Program
         }
         File.WriteAllText(Path.Join(TemplatePath, "skin.ini"), sb.ToString());
         // create zip
-        var zipPath = Path.Join(Path.GetDirectoryName(TemplatePath), $"QINGQIZ's Skin v{v}.osk");
+        var zipPath = Path.Join(Path.GetDirectoryName(TemplatePath), $"{Config.Title} v{v}.osk");
         ZipFile.CreateFromDirectory(TemplatePath, zipPath, CompressionLevel.Fastest, false);
         Process.Start("explorer.exe", $"/e, /select, \"{zipPath}\"");
     }
