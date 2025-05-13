@@ -8,11 +8,14 @@ namespace OsuSkinGen;
 internal static class Config
 {
     public const string Author = "QINGQIZ";
-    public const int ColumnWidth = 42;
-    public const int HitPosition = 415;
+    public const int ColumnWidth = 40;
+    public const int HitPosition = 410;
     public const int ScorePosition = 250;
-    public const int NoteHeightScale = 50;
-    public static readonly string Title = $"SKIN N{ColumnWidth}-{NoteHeightScale} P{HitPosition}";
+    /// <summary>
+    /// true height = this value / image width * image height
+    /// </summary>
+    public const int WidthForNoteHeightScale = 46;
+    public static readonly string Title = $"SKIN N{ColumnWidth}-{WidthForNoteHeightScale} P{HitPosition}";
 }
 
 public static class Program
@@ -76,7 +79,7 @@ public static class Program
 
              LightFramePerSecond: 40
              ColumnWidth: {colW}
-             WidthForNoteHeightScale: {Config.NoteHeightScale}
+             WidthForNoteHeightScale: {Config.WidthForNoteHeightScale}
 
              BarlineHeight: 1.2
              FontCombo: combo

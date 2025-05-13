@@ -33,7 +33,8 @@ internal static class Program
         "QQwiwi2012", "Arkman", "[Crz]Derrick", "doubu", "_IceRain", "[Crz]Emperor", "Alipay", "HMillion", "Benson_",
         "[Crz]sunnyxxy", "BKwind", "tyrcs",
         // 7k 自己找的
-        "[Crz]Emperor-", "richardfeder", "soulseason", "MEIDAN", "shiyu1213",
+        "[Crz]Emperor-", "richardfeder", "soulseason", "MEIDAN", "shiyu1213", "Aaki_", "ApoLar", "YyottaCat", "7777",
+        "_Yiiiii"
     ];
 
 

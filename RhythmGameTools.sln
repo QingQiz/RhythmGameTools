@@ -53,6 +53,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsuApi", "OsuApi\OsuApi.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OsuSkinGen", "OsuSkinGen\OsuSkinGen.csproj", "{46CAE5D1-1736-4547-9B4D-2C019D4DD8AB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "WorldDaiStar", "WorldDaiStar", "{02EA681E-C7D8-13C7-8484-4AC65E1B71E8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WorldDaiStarDataUpdater", "WorldDaiStarDataUpdater\WorldDaiStarDataUpdater.csproj", "{097900FF-E8E3-4BA9-BFF9-CDAC1111C5E7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -127,6 +131,10 @@ Global
 		{46CAE5D1-1736-4547-9B4D-2C019D4DD8AB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{46CAE5D1-1736-4547-9B4D-2C019D4DD8AB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{46CAE5D1-1736-4547-9B4D-2C019D4DD8AB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{097900FF-E8E3-4BA9-BFF9-CDAC1111C5E7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{097900FF-E8E3-4BA9-BFF9-CDAC1111C5E7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{097900FF-E8E3-4BA9-BFF9-CDAC1111C5E7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{097900FF-E8E3-4BA9-BFF9-CDAC1111C5E7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -150,6 +158,7 @@ Global
 		{A9AA6646-8E39-40C5-AFA0-0D458CEE7DF8} = {FEE99E9B-D0B3-4B43-81D3-CC90EBF86B2D}
 		{93B3305A-D79C-4B87-8D1F-22BECB9A87D2} = {A9AA6646-8E39-40C5-AFA0-0D458CEE7DF8}
 		{46CAE5D1-1736-4547-9B4D-2C019D4DD8AB} = {FEE99E9B-D0B3-4B43-81D3-CC90EBF86B2D}
+		{097900FF-E8E3-4BA9-BFF9-CDAC1111C5E7} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {D2C5AA84-FAE8-4C39-9212-379E38FE4ED8}
