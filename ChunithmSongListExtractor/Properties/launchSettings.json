@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "ChunithmSongListExtractor": {
-      "commandName": "Project",
-      "commandLineArgs": "\"F:\\AppData\\QQ\\Tencent Files\\642191352\\nt_qq\\nt_data\\File\\Ori\\music\"\r\nF:\\workspace\\chunithm\r\nC:\\bin\\ffmpeg.exe"
-    }
-  }
-}
