@@ -8,7 +8,7 @@ namespace OsuBeatmapDownloader;
 internal static class Program
 {
     private const string LazerPath = @"O:\GameStorage\osu!lazer";
-    private const string Output = LazerPath;
+    private static string Output => Path.Join(LazerPath, "download");
 
     private static readonly string[] RecommendMapperList =
     [
@@ -38,17 +38,18 @@ internal static class Program
     ];
 
 
-    private static async Task<List<BeatmapSet>> GetRecommendMapList()
+    private static async Task<List<BeatmapInfoV2>> GetRecommendMapList(Func<BeatmapInfoV2, bool>? filter = null)
     {
         var cacheName = DateTime.Now.ToString("[yyyy-MM-dd]") + "beatmaps.json";
 
         if (File.Exists(cacheName))
         {
             // deserialize
-            return JsonConvert.DeserializeObject<List<BeatmapSet>>(await File.ReadAllTextAsync(cacheName))!;
+            var res = JsonConvert.DeserializeObject<List<BeatmapInfoV2>>(await File.ReadAllTextAsync(cacheName))!;
+            return filter == null ? res : res.Where(filter).ToList();
         }
 
-        var mapList = new List<BeatmapSet>();
+        var mapList = new List<BeatmapInfoV2>();
 
         Parallel.ForEach(RecommendMapperList.Distinct(), new ParallelOptions { MaxDegreeOfParallelism = 8 }, user =>
         {
@@ -80,81 +81,99 @@ internal static class Program
         // write to file
         await File.WriteAllTextAsync(cacheName, JsonConvert.SerializeObject(mapList));
 
-        return mapList;
+        return filter == null ? mapList : mapList.Where(filter).ToList();
     }
 
-    private static List<BeatmapSet> RemoveDownloadedBeatmaps(IList<BeatmapSet> mapList)
+    private static List<BeatmapInfoBase> RemoveDownloadedBeatmaps(this List<BeatmapInfoBase> mapList)
     {
         return LazerDbApi.WithAllBeatmapSetInfo(LazerPath, list =>
         {
             var downloaded = list.Select(x => x.OnlineID).ToHashSet();
-            return mapList
-                .DistinctBy(x => x.Id)
-                .Where(x => !downloaded.Contains(x.Id))
+            var res = mapList
+                .DistinctBy(x => x.BeatmapSetId)
+                .Where(x => !downloaded.Contains(x.BeatmapSetId))
                 .ToList();
+            Console.WriteLine($"Removing {mapList.Count - res.Count} downloaded/duplicate beatmaps from {mapList.Count} total beatmaps.");
+            return res;
         });
     }
 
     private static int _cnt;
-    private static readonly object CntLk = new();
+    private static int _failed;
+    private static readonly Lock CntLk = new();
 
-    private static void DownloadTask(ConcurrentQueue<(BeatmapSet Map, int Count)> queue, int maxRetry)
+    private static void DownloadTask(ConcurrentQueue<(BeatmapInfoBase Map, int Count)> queue, int maxRetry)
     {
         while (queue.TryDequeue(out var map))
         {
             try
             {
-                OsuWebApi.DownloadBeatmap(map.Map.Id, Output).GetAwaiter().GetResult();
-                Console.WriteLine($"Downloaded {map.Map.Id} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
+                OsuWebApi.DownloadBeatmap(map.Map.BeatmapSetId, Output).GetAwaiter().GetResult();
+                Console.WriteLine($"Downloaded {map.Map.BeatmapSetId} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
                 lock (CntLk) _cnt--;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 if (map.Count < maxRetry)
                 {
-                    Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. RETRYING... ({map.Count + 1}/{maxRetry}");
+                    Console.WriteLine($"Failed to download {map.Map.BeatmapSetId} {map.Map.Title} - {map.Map.Artist}. RETRYING... ({map.Count + 1}/{maxRetry})");
                     queue.Enqueue((map.Map, map.Count + 1));
                 }
                 else
                 {
-                    Console.WriteLine($"Download {map.Map.Id} failed: {e.Message}. GIVE UP.");
-                    lock (CntLk) _cnt--;
+                    Console.WriteLine($"Failed to download {map.Map.BeatmapSetId} {map.Map.Title} - {map.Map.Artist}. GIVE UP.");
+                    lock (CntLk)
+                    {
+                        _cnt--;
+                        _failed++;
+                    }
                 }
             }
             finally
             {
-                Console.Write($"Remaining {_cnt} beatmaps ");
+                Console.Write($"Remaining {_cnt} beatmaps. ");
             }
         }
     }
 
     private static async Task Main()
     {
-        if (!Directory.Exists(Output))
+        // ensure output directory exists
+        Directory.CreateDirectory(Output);
+
+        // generate all beatmaps to download
+        var toDownload = new[]
         {
-            Directory.CreateDirectory(Output);
-        }
+            (await GetRecommendMapList()).Cast<BeatmapInfoBase>(),
+            await OsuWebApi.GetRankedBeatmapSets(GameMode.Mania),
+            await OsuWebApi.GetRankedBeatmapSets(GameMode.Osu, x => x.ApproachRate >= 8.8 && x.RiceCount > x.SliderCount)
+        };
 
-        var recommendMapList = await GetRecommendMapList();
-        var rankedMapList    = await OsuWebApi.GetRankedBeatmapSets();
-
-        var mapList = rankedMapList.Concat(recommendMapList).DistinctBy(x => x.Id).ToList();
-        mapList = RemoveDownloadedBeatmaps(mapList);
+        var mapList = toDownload
+            .SelectMany(x => x).ToList()
+            .RemoveDownloadedBeatmaps();
 
         Console.WriteLine($"Downloading {mapList.Count} beatmaps");
         _cnt = mapList.Count;
 
         // create thread pool
-        var queue = new ConcurrentQueue<(BeatmapSet Map, int Count)>(mapList.Select(x => (x, 0)));
-
-        // start download
+        var queue = new ConcurrentQueue<(BeatmapInfoBase Map, int Count)>(mapList.Select(x => (x, 0)));
         var tasks = new Task[Environment.ProcessorCount];
-
         for (var i = 0; i < tasks.Length; i++)
         {
             tasks[i] = Task.Run(() => DownloadTask(queue, 10));
         }
 
+        // wait for all tasks to finish
         await Task.WhenAll(tasks);
+        Console.WriteLine("Download finished");
+        Console.WriteLine($"Failed to download {_failed} beatmaps");
+        Console.WriteLine($"Downloaded {mapList.Count - _failed} beatmaps");
+
+        // open output folder in explorer
+        if (OperatingSystem.IsWindows())
+        {
+            System.Diagnostics.Process.Start("explorer.exe", Output);
+        }
     }
 }

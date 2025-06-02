@@ -9,25 +9,21 @@ using Newtonsoft.Json;
 
 namespace OsuApi;
 
-public record BeatmapSet(int Id, string Title, string Artist, string Creator);
-
 public static class OsuWebApi
 {
     #region req with auth
 
     private static string? _token;
     private static DateTime? _tokenExpire;
+    private static readonly Lock TokenLock = new();
 
     private static string Token
     {
         get
         {
-            lock (typeof(OsuWebApi))
+            lock (TokenLock)
             {
-                if (_tokenExpire == null || DateTime.Now > _tokenExpire || _token == null)
-                {
-                    RenewToken().Wait();
-                }
+                if (_tokenExpire == null || DateTime.Now > _tokenExpire || _token == null) RenewToken().Wait();
             }
 
             return _token!;
@@ -88,6 +84,8 @@ public static class OsuWebApi
     // 从 sayobot 镜像下载 beatmap
     public static async Task<string> DownloadBeatmap(long beatmapSetId, string path)
     {
+        return await DownloadBeatmapInner();
+
         async Task<string> DownloadBeatmapInner()
         {
             using var request = new HttpRequestMessage(new HttpMethod("GET"),
@@ -137,27 +135,26 @@ public static class OsuWebApi
 
             return beatmapPath;
         }
-
-        return await DownloadBeatmapInner();
     }
 
     #endregion
 
     #region high level api
 
-    public static async Task<List<BeatmapSet>> GetRankedBeatmapSets()
+    public static async Task<List<BeatmapInfoV1>> GetRankedBeatmapSets(GameMode mode, Func<BeatmapInfoV1, bool>? filter = null)
     {
-        var list = new List<BeatmapSet>();
-        var cache =
-            from file in Directory.GetFiles(".", "*-ranked.json")
-            select JsonConvert.DeserializeObject<List<BeatmapSet>>(File.ReadAllTextAsync(file).Result);
-        foreach (var i in cache) list.AddRange(i);
-        list = list.DistinctBy(x => x.Id).ToList();
+        var fnSuffix = $"-ranked-{Enum.GetName(mode)}.json";
+
+        var list = Directory.GetFiles(".", $"*{fnSuffix}")
+            .AsParallel()
+            .Select(file => JsonConvert.DeserializeObject<List<BeatmapInfoV1>>(File.ReadAllTextAsync(file).Result))
+            .SelectMany(x => x!)
+            .DistinctBy(x => x.BeatmapSetId).ToList();
 
         while (true)
         {
             var date = (
-                from file in Directory.GetFiles(".", "*-ranked.json")
+                from file in Directory.GetFiles(".", $"*{fnSuffix}")
                 select Path.GetFileNameWithoutExtension(file)
                 into dateInFile
                 select dateInFile.Split('-')[0]
@@ -170,51 +167,48 @@ public static class OsuWebApi
             const int limit = 500;
             var url = "https://osu.ppy.sh/api/get_beatmaps".SetQueryParams(new
             {
-                k = OsuWebApi.Config["apiKey"],
+                k = Config["apiKey"],
                 // utc time in mysql format
                 since = date.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss"),
-                m     = 3,
+                m     = mode,
                 s     = 0,
                 limit
             });
 
-            Console.WriteLine("Requesting maps ranked after " + date.ToString("yyyy-MM-dd HH:mm:ss"));
+            Console.WriteLine($"Requesting maps {Enum.GetName(mode)} ranked maps after " + date.ToString("yyyy-MM-dd HH:mm:ss"));
 
             var resString = await url.GetStringAsync();
-            var json      = JsonConvert.DeserializeObject<List<Dictionary<string, string>>>(resString)!;
+            var json      = JsonConvert.DeserializeObject<List<BeatmapInfoV1>>(resString)!;
 
-            var listSub = json.Select(b =>
-                new BeatmapSet(int.Parse(b["beatmapset_id"]), b["title"], b["artist"], b["creator"])
-            ).ToList();
-
-            list.AddRange(listSub);
-            list = list.DistinctBy(x => x.Id).ToList();
+            list.AddRange(json);
+            list = list.DistinctBy(x => x.BeatmapSetId).ToList();
 
             var maxT = json.Max(x =>
-                DateTime.ParseExact(x["approved_date"], "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
+                DateTime.ParseExact(x.ApprovedDate, "yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture)
             );
 
-            var cacheFileName = $"{new DateTimeOffset(maxT).ToUnixTimeMilliseconds()}-ranked.json";
-            await File.WriteAllTextAsync(cacheFileName, JsonConvert.SerializeObject(listSub));
+            var cacheFileName = $"{new DateTimeOffset(maxT).ToUnixTimeMilliseconds()}{fnSuffix}";
+            await File.WriteAllTextAsync(cacheFileName, JsonConvert.SerializeObject(json));
 
-            if (json.Count < limit) return list;
+            if (json.Count < limit) return filter == null ? list : list.Where(filter).ToList();
         }
     }
 
-    public static async Task<List<BeatmapSet>> GetUserBeatmapSets(string username)
+    public static async Task<List<BeatmapInfoV2>> GetUserBeatmapSets(string username)
     {
-        var cacheName = DateTime.Now.ToString("[yyyy-MM-dd]") + $"[{username}].json";
-        if (File.Exists(cacheName))
+        var now = DateTime.Now;
+        var fn  = $"[Y{now.Year}M{now.Month}W{now.Day / 7}][{username}].json";
+        if (File.Exists(fn))
         {
-            return JsonConvert.DeserializeObject<List<BeatmapSet>>(await File.ReadAllTextAsync(cacheName))!;
+            return JsonConvert.DeserializeObject<List<BeatmapInfoV2>>(await File.ReadAllTextAsync(fn))!;
         }
 
-        var user = await OsuWebApi.Request(OsuWebApi.ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync();
-        var uri  = OsuWebApi.ApiRoot + $"/users/{user.id}/beatmapsets";
+        var user = await Request(ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync();
+        var uri  = ApiRoot + $"/users/{user.id}/beatmapsets";
 
         var type = new[] { "graveyard", "guest", "loved", "ranked" };
 
-        var res = new List<BeatmapSet>();
+        var res = new List<BeatmapInfoV2>();
 
         foreach (var t in type)
         {
@@ -225,14 +219,10 @@ public static class OsuWebApi
             {
                 try
                 {
-                    var j = await OsuWebApi
-                        .Request($"{uri}/{t}?limit={limit}&offset={offset}")
-                        .GetJsonListAsync();
-
-                    res.AddRange(j.Select(x =>
-                        new BeatmapSet((int)x.id, (string)x.title, (string)x.artist, (string)x.creator))
-                    );
-                    if (j.Count < limit) break;
+                    var jText = await Request($"{uri}/{t}?limit={limit}&offset={offset}").GetStringAsync();
+                    var json  = JsonConvert.DeserializeObject<List<BeatmapInfoV2>>(jText)!;
+                    res.AddRange(json);
+                    if (json.Count < limit) break;
                 }
                 catch (Exception e)
                 {
@@ -244,7 +234,7 @@ public static class OsuWebApi
             }
         }
 
-        await File.WriteAllTextAsync(cacheName, JsonConvert.SerializeObject(res));
+        await File.WriteAllTextAsync(fn, JsonConvert.SerializeObject(res));
 
         return res;
 
