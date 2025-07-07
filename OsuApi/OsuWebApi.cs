@@ -1,7 +1,5 @@
 ﻿using System.Globalization;
-using System.Net;
 using System.Reflection;
-using System.Web;
 using Flurl;
 using Flurl.Http;
 using Microsoft.Extensions.Configuration;
@@ -56,7 +54,7 @@ public static class OsuWebApi
             scope         = "public"
         });
 
-        var res = await response.GetJsonAsync();
+        var res = await response.GetJsonAsync<dynamic>();
 
         _token       = res.access_token;
         _tokenExpire = DateTime.Now + TimeSpan.FromSeconds(res.expires_in);
@@ -72,15 +70,6 @@ public static class OsuWebApi
 
     #region Beatmap Downloader
 
-    private static readonly HttpClient HttpClient = new(new HttpClientHandler
-    {
-        AutomaticDecompression                    = DecompressionMethods.All,
-        ServerCertificateCustomValidationCallback = (_, _, _, _) => true,
-    })
-    {
-        Timeout = TimeSpan.FromMinutes(2),
-    };
-
     // 从 sayobot 镜像下载 beatmap
     public static async Task<string> DownloadBeatmap(long beatmapSetId, string path)
     {
@@ -88,52 +77,20 @@ public static class OsuWebApi
 
         async Task<string> DownloadBeatmapInner()
         {
-            using var request = new HttpRequestMessage(new HttpMethod("GET"),
-                $"https://dl.sayobot.cn/beatmaps/download/full/{beatmapSetId}");
-            request.Headers.TryAddWithoutValidation("authority", "dl.sayobot.cn");
-            request.Headers.TryAddWithoutValidation("accept",
-                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9");
-            request.Headers.TryAddWithoutValidation("accept-language", "zh-CN,zh;q=0.9,en-GB;q=0.8,en;q=0.7");
-            request.Headers.TryAddWithoutValidation("sec-ch-ua",
-                "\"Google Chrome\";v=\"105\", \"Not)A;Brand\";v=\"8\", \"Chromium\";v=\"105\"");
-            request.Headers.TryAddWithoutValidation("sec-ch-ua-mobile", "?0");
-            request.Headers.TryAddWithoutValidation("sec-ch-ua-platform", "\"Windows\"");
-            request.Headers.TryAddWithoutValidation("sec-fetch-dest", "document");
-            request.Headers.TryAddWithoutValidation("sec-fetch-mode", "navigate");
-            request.Headers.TryAddWithoutValidation("sec-fetch-site", "none");
-            request.Headers.TryAddWithoutValidation("sec-fetch-user", "?1");
-            request.Headers.TryAddWithoutValidation("upgrade-insecure-requests", "1");
-            request.Headers.TryAddWithoutValidation("user-agent", FakeUserAgent);
+            var url = $"https://dl.sayobot.cn/beatmaps/{beatmapSetId / 10000}/{beatmapSetId % 10000:0000}/full";
+            var beatmapPath = await url
+                .WithSettings(settings =>
+                {
+                    settings.HttpVersion = "2.0";
+                    settings.Timeout     = TimeSpan.FromMinutes(2);
+                })
+                .WithHeader("referer", "https://osu.sayobot.cn/SayoMapsDownloader.exe")
+                .DownloadFileAsync(path, beatmapSetId + ".osz");
 
-            var response = await HttpClient.SendAsync(request);
+            if (new FileInfo(beatmapPath).Length >= 10240) return beatmapPath;
 
-            var filename = (HttpUtility.ParseQueryString(request.RequestUri!.Query).Get("filename") ??
-                            beatmapSetId.ToString()) + ".osz";
-
-            // check if is valid filename
-            if (filename.IndexOfAny(Path.GetInvalidFileNameChars()) != -1)
-            {
-                filename = beatmapSetId + ".osz";
-            }
-
-            var beatmapPath = Path.Join(path, filename);
-
-            var s  = await response.Content.ReadAsStreamAsync();
-            var fs = File.OpenWrite(beatmapPath);
-
-            await s.CopyToAsync(fs);
-
-            s.Close();
-            fs.Close();
-
-            // check file size. at least 10KB
-            if (new FileInfo(beatmapPath).Length < 10240)
-            {
-                File.Delete(beatmapPath);
-                throw new Exception("Download failed");
-            }
-
-            return beatmapPath;
+            File.Delete(beatmapPath);
+            throw new Exception("Download failed, file size is too small.");
         }
     }
 
@@ -203,7 +160,7 @@ public static class OsuWebApi
             return JsonConvert.DeserializeObject<List<BeatmapInfoV2>>(await File.ReadAllTextAsync(fn))!;
         }
 
-        var user = await Request(ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync();
+        var user = await Request(ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync<dynamic>();
         var uri  = ApiRoot + $"/users/{user.id}/beatmapsets";
 
         var type = new[] { "graveyard", "guest", "loved", "ranked" };

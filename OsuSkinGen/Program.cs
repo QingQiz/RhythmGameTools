@@ -9,7 +9,7 @@ internal static class Config
 {
     public const string Author = "QINGQIZ";
     public const int ColumnWidth = 40;
-    public const int HitPosition = 410;
+    public const int HitPosition = 415;
     public const int ScorePosition = 250;
     /// <summary>
     /// true height = this value / image width * image height

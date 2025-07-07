@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using Flurl.Http;
 using Newtonsoft.Json;
+using osu.Game.Extensions;
 using OsuApi;
 
 namespace OsuBeatmapDownloader;
@@ -89,6 +90,9 @@ internal static class Program
         return LazerDbApi.WithAllBeatmapSetInfo(LazerPath, list =>
         {
             var downloaded = list.Select(x => x.OnlineID).ToHashSet();
+            downloaded.AddRange(Directory.GetFiles(Output, "*.osz")
+                .Select(Path.GetFileNameWithoutExtension)
+                .Select(fn => int.Parse(fn!.Split(' ')[0])));
             var res = mapList
                 .DistinctBy(x => x.BeatmapSetId)
                 .Where(x => !downloaded.Contains(x.BeatmapSetId))
@@ -112,26 +116,39 @@ internal static class Program
                 Console.WriteLine($"Downloaded {map.Map.BeatmapSetId} {map.Map.Title} - {map.Map.Artist} by {map.Map.Creator}");
                 lock (CntLk) _cnt--;
             }
+            catch (FlurlHttpException e)
+            {
+                Console.WriteLine($"Failed to download {map.Map.BeatmapSetId} {map.Map.Title} - {map.Map.Artist}. {e.StatusCode}.");
+                GiveUp();
+            }
             catch (Exception)
             {
-                if (map.Count < maxRetry)
-                {
-                    Console.WriteLine($"Failed to download {map.Map.BeatmapSetId} {map.Map.Title} - {map.Map.Artist}. RETRYING... ({map.Count + 1}/{maxRetry})");
-                    queue.Enqueue((map.Map, map.Count + 1));
-                }
-                else
-                {
-                    Console.WriteLine($"Failed to download {map.Map.BeatmapSetId} {map.Map.Title} - {map.Map.Artist}. GIVE UP.");
-                    lock (CntLk)
-                    {
-                        _cnt--;
-                        _failed++;
-                    }
-                }
+                if (Retry(map.Map, map.Count)) continue;
+                Console.WriteLine($"Failed to download {map.Map.BeatmapSetId} {map.Map.Title} - {map.Map.Artist}. Max retry reached. Give Up.");
+                GiveUp();
             }
             finally
             {
                 Console.Write($"Remaining {_cnt} beatmaps. ");
+            }
+        }
+        return;
+
+        bool Retry(BeatmapInfoBase map, int count)
+        {
+            if (count >= maxRetry) return false;
+
+            Console.WriteLine($"Failed to download {map.BeatmapSetId} {map.Title} - {map.Artist}. RETRYING... ({count + 1}/{maxRetry})");
+            queue.Enqueue((map, count + 1));
+            return true;
+        }
+
+        void GiveUp()
+        {
+            lock (CntLk)
+            {
+                _cnt--;
+                _failed++;
             }
         }
     }
