@@ -2,6 +2,7 @@
 using System.Reflection;
 using Flurl;
 using Flurl.Http;
+using Flurl.Http.Newtonsoft;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 
@@ -43,6 +44,7 @@ public static class OsuWebApi
     /// </summary>
     private static async Task RenewToken()
     {
+        FlurlHttp.Clients.UseNewtonsoft();
         var clientId     = Config["clientId"];
         var clientSecret = Config["clientSecret"];
 
@@ -57,7 +59,7 @@ public static class OsuWebApi
         var res = await response.GetJsonAsync<dynamic>();
 
         _token       = res.access_token;
-        _tokenExpire = DateTime.Now + TimeSpan.FromSeconds(res.expires_in);
+        _tokenExpire = DateTime.Now + TimeSpan.FromSeconds((int)res.expires_in);
     }
 
     private static IFlurlRequest Request(string uri)

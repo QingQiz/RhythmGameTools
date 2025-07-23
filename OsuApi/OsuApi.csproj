@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Flurl.Http.Newtonsoft" Version="0.9.1" />
         <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="9.0.0-preview.3.24172.9"/>
         <PackageReference Include="Flurl.Http" Version="4.0.2" />
         <PackageReference Include="ppy.osu.Game" Version="2025.118.2"/>

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Flurl.Http;
+using Flurl.Http.Newtonsoft;
 using Newtonsoft.Json;
 using osu.Game.Extensions;
 using OsuApi;
@@ -72,8 +73,9 @@ internal static class Program
             {
                 Console.WriteLine($"User {user} not found.");
             }
-            catch
+            catch (Exception e)
             {
+                Console.Write(e.ToString());
                 Console.WriteLine("RETRY Requesting " + user);
                 goto RETRY;
             }
@@ -155,6 +157,7 @@ internal static class Program
 
     private static async Task Main()
     {
+        FlurlHttp.Clients.UseNewtonsoft();
         // ensure output directory exists
         Directory.CreateDirectory(Output);
 
