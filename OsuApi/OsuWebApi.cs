@@ -72,21 +72,18 @@ public static class OsuWebApi
 
     #region Beatmap Downloader
 
-    // 从 sayobot 镜像下载 beatmap
+    // 从 catboy.best 镜像下载 beatmap
     public static async Task<string> DownloadBeatmap(long beatmapSetId, string path)
     {
         return await DownloadBeatmapInner();
 
         async Task<string> DownloadBeatmapInner()
         {
-            var url = $"https://dl.sayobot.cn/beatmaps/{beatmapSetId / 10000}/{beatmapSetId % 10000:0000}/full";
+            var url = $"https://catboy.best/d/{beatmapSetId}";
             var beatmapPath = await url
-                .WithSettings(settings =>
-                {
-                    settings.HttpVersion = "2.0";
-                    settings.Timeout     = TimeSpan.FromMinutes(2);
-                })
-                .WithHeader("referer", "https://osu.sayobot.cn/SayoMapsDownloader.exe")
+                .WithHeader("User-Agent", "curl/8.15.0")
+                .WithHeader("Accept", "*/*")
+                .WithHeader("Host", "catboy.best")
                 .DownloadFileAsync(path, beatmapSetId + ".osz");
 
             if (new FileInfo(beatmapPath).Length >= 10240) return beatmapPath;
