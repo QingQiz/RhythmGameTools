@@ -45,20 +45,20 @@ public static class OsuWebApi
     private static async Task RenewToken()
     {
         FlurlHttp.Clients.UseNewtonsoft();
-        var clientId     = Config["clientId"];
+        var clientId = Config["clientId"];
         var clientSecret = Config["clientSecret"];
 
         var response = await TokenUri.PostJsonAsync(new
         {
-            grant_type    = "client_credentials",
-            client_id     = clientId,
+            grant_type = "client_credentials",
+            client_id = clientId,
             client_secret = clientSecret,
-            scope         = "public"
+            scope = "public"
         });
 
         var res = await response.GetJsonAsync<dynamic>();
 
-        _token       = res.access_token;
+        _token = res.access_token;
         _tokenExpire = DateTime.Now + TimeSpan.FromSeconds((int)res.expires_in);
     }
 
@@ -84,7 +84,7 @@ public static class OsuWebApi
                 .WithSettings(settings =>
                 {
                     settings.HttpVersion = "2.0";
-                    settings.Timeout     = TimeSpan.FromMinutes(2);
+                    settings.Timeout = TimeSpan.FromMinutes(2);
                 })
                 .WithHeader("referer", "https://osu.sayobot.cn/SayoMapsDownloader.exe")
                 .DownloadFileAsync(path, beatmapSetId + ".osz");
@@ -100,7 +100,8 @@ public static class OsuWebApi
 
     #region high level api
 
-    public static async Task<List<BeatmapInfoV1>> GetRankedBeatmapSets(GameMode mode, Func<BeatmapInfoV1, bool>? filter = null)
+    public static async Task<List<BeatmapInfoV1>> GetRankedBeatmapSets(GameMode mode,
+        Func<BeatmapInfoV1, bool>? filter = null)
     {
         var fnSuffix = $"-ranked-{Enum.GetName(mode)}.json";
 
@@ -129,15 +130,16 @@ public static class OsuWebApi
                 k = Config["apiKey"],
                 // utc time in mysql format
                 since = date.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss"),
-                m     = mode,
-                s     = 0,
+                m = (int)mode,
+                a = 0,
                 limit
             });
 
-            Console.WriteLine($"Requesting maps {Enum.GetName(mode)} ranked maps after " + date.ToString("yyyy-MM-dd HH:mm:ss"));
+            Console.WriteLine($"Requesting maps {Enum.GetName(mode)} ranked maps after " +
+                              date.ToString("yyyy-MM-dd HH:mm:ss"));
 
             var resString = await url.GetStringAsync();
-            var json      = JsonConvert.DeserializeObject<List<BeatmapInfoV1>>(resString)!;
+            var json = JsonConvert.DeserializeObject<List<BeatmapInfoV1>>(resString)!;
 
             list.AddRange(json);
             list = list.DistinctBy(x => x.BeatmapSetId).ToList();
@@ -156,14 +158,14 @@ public static class OsuWebApi
     public static async Task<List<BeatmapInfoV2>> GetUserBeatmapSets(string username)
     {
         var now = DateTime.Now;
-        var fn  = $"[Y{now.Year}M{now.Month}W{now.Day / 7}][{username}].json";
+        var fn = $"[Y{now.Year}M{now.Month}W{now.Day / 7}][{username}].json";
         if (File.Exists(fn))
         {
             return JsonConvert.DeserializeObject<List<BeatmapInfoV2>>(await File.ReadAllTextAsync(fn))!;
         }
 
         var user = await Request(ApiRoot + $"/users/{username}/mania?key=username").GetJsonAsync<dynamic>();
-        var uri  = ApiRoot + $"/users/{user.id}/beatmapsets";
+        var uri = ApiRoot + $"/users/{user.id}/beatmapsets";
 
         var type = new[] { "graveyard", "guest", "loved", "ranked" };
 
@@ -171,15 +173,15 @@ public static class OsuWebApi
 
         foreach (var t in type)
         {
-            const int limit  = 50;
-            var       offset = 0;
+            const int limit = 50;
+            var offset = 0;
 
             while (true)
             {
                 try
                 {
                     var jText = await Request($"{uri}/{t}?limit={limit}&offset={offset}").GetStringAsync();
-                    var json  = JsonConvert.DeserializeObject<List<BeatmapInfoV2>>(jText)!;
+                    var json = JsonConvert.DeserializeObject<List<BeatmapInfoV2>>(jText)!;
                     res.AddRange(json);
                     if (json.Count < limit) break;
                 }
@@ -203,6 +205,7 @@ public static class OsuWebApi
             {
                 e = ae.InnerExceptions.First();
             }
+
             if (e is not FlurlHttpException fe) return false;
 
             Console.WriteLine(fe.Message);

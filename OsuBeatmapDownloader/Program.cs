@@ -165,8 +165,9 @@ internal static class Program
         var toDownload = new[]
         {
             (await GetRecommendMapList()).Cast<BeatmapInfoBase>(),
-            await OsuWebApi.GetRankedBeatmapSets(GameMode.Mania),
-            await OsuWebApi.GetRankedBeatmapSets(GameMode.Osu, x => x.ApproachRate >= 8.8 && x.RiceCount > x.SliderCount)
+            // skip 4k
+            await OsuWebApi.GetRankedBeatmapSets(GameMode.Mania, x => Math.Abs(x.CircleSize - 7) < 0.01),
+            // await OsuWebApi.GetRankedBeatmapSets(GameMode.Osu, x => x.ApproachRate >= 8.8 && x.RiceCount > x.SliderCount)
         };
 
         var mapList = toDownload
