@@ -166,7 +166,7 @@ internal static class Program
         {
             (await GetRecommendMapList()).Cast<BeatmapInfoBase>(),
             await OsuWebApi.GetRankedBeatmapSets(GameMode.Mania),
-            // await OsuWebApi.GetRankedBeatmapSets(GameMode.Osu, x => x.ApproachRate >= 8.8 && x.RiceCount > x.SliderCount)
+            await OsuWebApi.GetRankedBeatmapSets(GameMode.Osu, x => x.ApproachRate >= 8.8 && x.RiceCount > x.SliderCount)
         };
 
         var mapList = toDownload
@@ -178,8 +178,7 @@ internal static class Program
 
         // create thread pool
         var queue = new ConcurrentQueue<(BeatmapInfoBase Map, int Count)>(mapList.Select(x => (x, 0)));
-        // var tasks = new Task[Environment.ProcessorCount];
-        var tasks = new Task[1];
+        var tasks = new Task[Environment.ProcessorCount];
         for (var i = 0; i < tasks.Length; i++)
         {
             tasks[i] = Task.Run(() => DownloadTask(queue, 10));
