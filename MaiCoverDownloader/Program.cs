@@ -5,23 +5,51 @@ namespace MaiCoverDownloader;
 
 internal static class Program
 {
-    private const string Output = @"C:\Users\sofee\Desktop\workspace\QQBOT\Marisa.Frontend\public\assets\maimai";
+    private const string Output = @"E:\MarisaBot\Marisa.Frontend\public\assets\maimai";
+    private const string CoverUrl = "https://maimai.diving-fish.com/covers";
+    private static readonly byte[] PngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+
+    private static bool IsValidPng(string path)
+    {
+        if (!File.Exists(path)) return false;
+
+        using var stream = File.OpenRead(path);
+        if (stream.Length < PngSignature.Length) return false;
+
+        Span<byte> header = stackalloc byte[PngSignature.Length];
+        return stream.Read(header) == PngSignature.Length && header.SequenceEqual(PngSignature);
+    }
+
+    private static void DeleteIfInvalidPng(string path)
+    {
+        if (File.Exists(path) && !IsValidPng(path)) File.Delete(path);
+    }
 
     private static async Task<bool> Download(string filename, int urlSuffix)
     {
         var coverPath = Path.Join(Output, "cover");
-        if (File.Exists(Path.Join(coverPath, filename))) return true;
-        if (File.Exists(Path.Join(coverPath, $"{urlSuffix}.png")))
+        Directory.CreateDirectory(coverPath);
+
+        var targetPath = Path.Join(coverPath, filename);
+        var sourcePath = Path.Join(coverPath, $"{urlSuffix}.png");
+
+        DeleteIfInvalidPng(targetPath);
+        if (IsValidPng(targetPath)) return true;
+
+        DeleteIfInvalidPng(sourcePath);
+        if (IsValidPng(sourcePath))
         {
-            File.Copy(Path.Join(coverPath, $"{urlSuffix}.png"), Path.Join(coverPath, filename));
+            File.Copy(sourcePath, targetPath, true);
             return true;
         }
 
         try
         {
-            await $"https://assets.lxns.net/maimai/jacket/{urlSuffix.ToString()}.png"
+            await $"{CoverUrl}/{urlSuffix}.png"
                 .DownloadFileAsync(coverPath, filename);
-            return true;
+
+            DeleteIfInvalidPng(targetPath);
+            return IsValidPng(targetPath);
         }
         catch (FlurlHttpException e) when (e.StatusCode == 404)
         {
