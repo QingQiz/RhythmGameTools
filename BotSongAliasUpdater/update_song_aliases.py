@@ -365,7 +365,7 @@ def write_alias_table(path: Path, table: dict[str, list[str]]) -> None:
             lineterminator="\n",
             quoting=csv.QUOTE_MINIMAL,
         )
-        for title, aliases in table.items():
+        for title, aliases in sorted(table.items()):
             if not aliases:
                 continue
             writer.writerow([title, *aliases])
@@ -403,7 +403,9 @@ def cleanup_aliases(title: str, aliases: Iterable[str]) -> list[str]:
                 to_remove.add(index)
                 break
 
-    return [alias for index, alias in enumerate(cleaned) if index not in to_remove]
+    result = [alias for index, alias in enumerate(cleaned) if index not in to_remove]
+    result.sort()
+    return result
 
 
 def contains_alias(aliases: Iterable[str], candidate: str) -> bool:
