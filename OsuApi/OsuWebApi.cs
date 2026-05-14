@@ -100,7 +100,15 @@ public static class OsuWebApi
         }
         catch { }
 
-        // 2. mirror.hinamizawa.ai (级联镜像，内置多源容错)
+        // 2. nerinyan.moe
+        try
+        {
+            return await DownloadWithSettings(
+                $"https://nerinyan.moe/d/{beatmapSetId}", beatmapSetId, path);
+        }
+        catch { }
+
+        // 3. mirror.hinamizawa.ai (级联镜像，内置多源容错)
         try
         {
             return await DownloadWithSettings(
@@ -108,7 +116,7 @@ public static class OsuWebApi
         }
         catch { }
 
-        // 3. mirror.nekoha.moe
+        // 4. mirror.nekoha.moe
         try
         {
             return await DownloadWithSettings(
@@ -116,7 +124,7 @@ public static class OsuWebApi
         }
         catch { }
 
-        // 4. 最终回退到 sayobot
+        // 5. 最终回退到 sayobot
         var sayobotUrl = $"https://dl.sayobot.cn/beatmaps/{beatmapSetId / 10000}/{beatmapSetId % 10000:0000}/full";
         var beatmapPath = await sayobotUrl
             .WithSettings(settings =>
