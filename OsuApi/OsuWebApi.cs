@@ -72,28 +72,65 @@ public static class OsuWebApi
 
     #region Beatmap Downloader
 
-    // 从 sayobot 镜像下载 beatmap
+    private static async Task<string> DownloadWithSettings(string url, long beatmapSetId, string path)
+    {
+        var beatmapPath = await url
+            .WithSettings(settings =>
+            {
+                settings.HttpVersion = "2.0";
+                settings.Timeout = TimeSpan.FromMinutes(2);
+            })
+            .WithHeader("user-agent", FakeUserAgent)
+            .DownloadFileAsync(path, beatmapSetId + ".osz");
+
+        if (new FileInfo(beatmapPath).Length >= 10240) return beatmapPath;
+
+        File.Delete(beatmapPath);
+        throw new Exception("Download failed, file size is too small.");
+    }
+
+    // 从多个镜像依次尝试下载谱面，全部失败时抛出异常
     public static async Task<string> DownloadBeatmap(long beatmapSetId, string path)
     {
-        return await DownloadBeatmapInner();
-
-        async Task<string> DownloadBeatmapInner()
+        // 1. osu.direct
+        try
         {
-            var url = $"https://dl.sayobot.cn/beatmaps/{beatmapSetId / 10000}/{beatmapSetId % 10000:0000}/full";
-            var beatmapPath = await url
-                .WithSettings(settings =>
-                {
-                    settings.HttpVersion = "2.0";
-                    settings.Timeout = TimeSpan.FromMinutes(2);
-                })
-                .WithHeader("referer", "https://osu.sayobot.cn/SayoMapsDownloader.exe")
-                .DownloadFileAsync(path, beatmapSetId + ".osz");
-
-            if (new FileInfo(beatmapPath).Length >= 10240) return beatmapPath;
-
-            File.Delete(beatmapPath);
-            throw new Exception("Download failed, file size is too small.");
+            return await DownloadWithSettings(
+                $"https://osu.direct/api/d/{beatmapSetId}", beatmapSetId, path);
         }
+        catch { }
+
+        // 2. mirror.hinamizawa.ai (级联镜像，内置多源容错)
+        try
+        {
+            return await DownloadWithSettings(
+                $"https://mirror.hinamizawa.ai/api/v1/hinai/d/{beatmapSetId}", beatmapSetId, path);
+        }
+        catch { }
+
+        // 3. mirror.nekoha.moe
+        try
+        {
+            return await DownloadWithSettings(
+                $"https://mirror.nekoha.moe/api4/download/{beatmapSetId}", beatmapSetId, path);
+        }
+        catch { }
+
+        // 4. 最终回退到 sayobot
+        var sayobotUrl = $"https://dl.sayobot.cn/beatmaps/{beatmapSetId / 10000}/{beatmapSetId % 10000:0000}/full";
+        var beatmapPath = await sayobotUrl
+            .WithSettings(settings =>
+            {
+                settings.HttpVersion = "2.0";
+                settings.Timeout = TimeSpan.FromMinutes(2);
+            })
+            .WithHeader("referer", "https://osu.sayobot.cn/SayoMapsDownloader.exe")
+            .DownloadFileAsync(path, beatmapSetId + ".osz");
+
+        if (new FileInfo(beatmapPath).Length >= 10240) return beatmapPath;
+
+        File.Delete(beatmapPath);
+        throw new Exception("Download failed, file size is too small.");
     }
 
     #endregion
